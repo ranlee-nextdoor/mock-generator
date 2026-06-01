@@ -3,383 +3,792 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ad Mock Generator</title>
+  <title>Mock Maker — Nextdoor</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f2f2f2;
-      color: #111;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #fff;
+      color: #232f46;
       min-height: 100vh;
       display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 3rem 1rem;
+      flex-direction: column;
     }
 
-    .card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 2.5rem;
+    /* ── Header ── */
+    .header {
       width: 100%;
-      max-width: 560px;
-      box-shadow: 0 2px 20px rgba(0,0,0,0.07);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #cad3e5;
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    .header-wordmark {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1B8751;
+      letter-spacing: -0.3px;
+    }
+    .header-sep {
+      width: 1px;
+      height: 18px;
+      background: #cad3e5;
+      margin: 0 10px;
+    }
+    .header-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #232f46;
+      letter-spacing: -0.5px;
     }
 
-    h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem; }
-    .subtitle { font-size: 0.85rem; color: #777; margin-bottom: 2rem; }
+    /* ── Error Banner ── */
+    #error-banner {
+      display: none;
+      background: #fff0f0;
+      border: 1px solid #f5b5b5;
+      color: #c0222a;
+      font-size: 13px;
+      padding: 10px 32px;
+    }
 
-    .section-label {
-      font-size: 0.7rem;
+    /* ── Two-column layout ── */
+    .layout {
+      display: flex;
+      flex: 1;
+      align-items: flex-start;
+      padding: 32px;
+      gap: 24px;
+    }
+
+    /* ── Left column ── */
+    .left-col {
+      flex: 0 0 700px;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    /* ── Cards ── */
+    .card {
+      border: 1.5px solid #cad3e5;
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .card-title {
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #999;
-      margin-bottom: 0.75rem;
-      margin-top: 1.75rem;
+      color: #576580;
+      margin-bottom: 16px;
     }
 
-    .field { margin-bottom: 1rem; }
-    label {
+    /* ── Radio groups ── */
+    .radio-row {
       display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #444;
-      margin-bottom: 0.35rem;
+      gap: 32px;
+      margin-bottom: 16px;
     }
-    label .limit { font-weight: 400; color: #aaa; font-size: 0.75rem; }
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+    .radio-group-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #576580;
+      margin-bottom: 4px;
+    }
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 14px;
+      color: #232f46;
+      padding: 2px 0;
+    }
+    .radio-option input[type="radio"] {
+      display: none;
+    }
+    .radio-custom {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #cad3e5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: border-color 0.12s;
+    }
+    .radio-option input[type="radio"]:checked + .radio-custom {
+      border-color: #232f46;
+    }
+    .radio-option input[type="radio"]:checked + .radio-custom::after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #232f46;
+    }
 
-    select,
+    /* ── Asset upload zones ── */
+    .upload-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .upload-zone {
+      background: #f0f2f5;
+      border: 1.5px dashed #cad3e5;
+      border-radius: 12px;
+      padding: 20px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+    .upload-zone:hover {
+      border-color: #576580;
+      background: #e8eaed;
+    }
+    .upload-zone.has-file {
+      border-color: #1B8751;
+      background: #f0f7f3;
+    }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .upload-icon {
+      font-size: 22px;
+      margin-bottom: 6px;
+      color: #576580;
+    }
+    .upload-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #232f46;
+      margin-bottom: 2px;
+    }
+    .upload-hint {
+      font-size: 11px;
+      color: #576580;
+    }
+    .upload-filename {
+      font-size: 11px;
+      color: #1B8751;
+      margin-top: 4px;
+      word-break: break-all;
+    }
+
+    /* ── Text fields ── */
+    .field {
+      margin-bottom: 16px;
+    }
+    .field-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #232f46;
+      margin-bottom: 6px;
+      display: block;
+    }
     input[type="text"],
-    input[type="number"],
-    input[type="file"],
     textarea {
       width: 100%;
-      padding: 0.6rem 0.8rem;
-      border: 1.5px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      background: #fafafa;
+      padding: 10px 12px;
+      border: 1.5px solid #cad3e5;
+      border-radius: 12px;
+      font-size: 14px;
       font-family: inherit;
-      transition: border-color 0.15s;
+      color: #232f46;
+      background: #fff;
+      transition: border-color 0.12s;
     }
-    select:focus,
-    input:focus,
+    input[type="text"]:focus,
     textarea:focus {
       outline: none;
-      border-color: #111;
-      background: #fff;
+      border-color: #232f46;
     }
-
-    textarea { resize: vertical; min-height: 80px; }
-
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+    }
     .char-counter {
-      font-size: 0.72rem;
-      color: #aaa;
+      font-size: 12px;
+      color: #576580;
       text-align: right;
-      margin-top: 0.2rem;
+      margin-top: 4px;
     }
-    .char-counter.over { color: #e03; }
+    .char-counter.over { color: #c0222a; }
 
-    .note {
-      font-size: 0.78rem;
-      color: #888;
-      background: #f7f7f7;
-      border-radius: 6px;
-      padding: 0.5rem 0.75rem;
-      margin-top: 0.5rem;
+    /* ── Right column ── */
+    .right-col {
+      flex: 0 0 489px;
+      max-width: 489px;
+      position: sticky;
+      top: 32px;
     }
-
-    .hidden { display: none !important; }
-
-    button[type="submit"] {
+    .preview-panel {
+      background: #f0f2f5;
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      min-height: 520px;
+    }
+    .preview-area {
       width: 100%;
-      padding: 0.8rem;
-      background: #111;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 380px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #e4e7ed;
+    }
+    .preview-placeholder {
+      text-align: center;
+      color: #576580;
+      font-size: 14px;
+      padding: 24px;
+    }
+    .preview-placeholder-icon {
+      font-size: 36px;
+      display: block;
+      margin-bottom: 8px;
+      opacity: 0.5;
+    }
+    #preview-frame-img {
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    #preview-media-layer {
+      display: none;
+      position: absolute;
+      overflow: hidden;
+    }
+    #preview-media-layer img,
+    #preview-media-layer video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #preview-logo-layer {
+      display: none;
+      position: absolute;
+      overflow: hidden;
+    }
+    #preview-logo-layer img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .generate-btn {
+      width: 100%;
+      padding: 14px 24px;
+      background: #232f46;
       color: #fff;
       border: none;
-      border-radius: 10px;
-      font-size: 0.95rem;
+      border-radius: 1000px;
+      font-size: 15px;
       font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
-      margin-top: 1.75rem;
       transition: background 0.15s;
     }
-    button[type="submit"]:hover { background: #333; }
-    button[type="submit"]:disabled { background: #bbb; cursor: not-allowed; }
-
-    #status {
-      margin-top: 1rem;
-      font-size: 0.88rem;
+    .generate-btn:hover { background: #2e3d5a; }
+    .generate-btn:disabled { background: #9aa3b2; cursor: not-allowed; }
+    #status-msg {
+      font-size: 13px;
+      color: #576580;
       text-align: center;
-      color: #666;
-      min-height: 1.25rem;
+      min-height: 18px;
     }
-
     #download-wrap {
       display: none;
-      margin-top: 1rem;
+      width: 100%;
       text-align: center;
     }
-    #download-wrap a {
-      display: inline-block;
-      padding: 0.6rem 1.75rem;
-      background: #0055ff;
-      color: #fff;
-      border-radius: 8px;
-      text-decoration: none;
+    #dl-link {
+      font-size: 14px;
       font-weight: 600;
-      font-size: 0.9rem;
+      color: #1B8751;
+      text-decoration: none;
     }
+    #dl-link:hover { text-decoration: underline; }
 
-    .divider {
-      border: none;
-      border-top: 1px solid #eee;
-      margin: 1.75rem 0 0;
-    }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
-<div class="card">
-  <h1>Ad Mock Generator</h1>
-  <p class="subtitle">Build a preview mockup for any Nextdoor ad format.</p>
 
-  <form id="gen-form">
+<!-- Header -->
+<header class="header">
+  <span class="header-logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 2C14 2 6 7.5 6 15C6 19.418 9.582 23 14 23C18.418 23 22 19.418 22 15C22 7.5 14 2 14 2Z" fill="#1B8751"/>
+      <rect x="11" y="19" width="6" height="7" rx="1" fill="#1B8751"/>
+    </svg>
+    <span class="header-wordmark">Nextdoor</span>
+  </span>
+  <div class="header-sep"></div>
+  <span class="header-title">Mock Maker</span>
+</header>
 
-    <!-- Step 1: Format selection -->
-    <p class="section-label">Format</p>
+<!-- Error banner -->
+<div id="error-banner"></div>
 
-    <div class="field">
-      <label for="device">Device</label>
-      <select id="device" name="device">
-        {% for key, label in devices.items() %}
-          <option value="{{ key }}">{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
+<!-- Two-column layout -->
+<div class="layout">
 
-    <div class="field">
-      <label for="format">Ad Format</label>
-      <select id="format" name="format">
-        {% for key, label in formats.items() %}
-          <option value="{{ key }}">{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
+  <!-- Left column -->
+  <div class="left-col">
 
-    <div id="format-note" class="note hidden"></div>
+    <!-- Card 1: Format -->
+    <div class="card">
+      <div class="card-title">Format</div>
 
-    <hr class="divider" />
+      <!-- Top row: Device, Background, Ad Format -->
+      <div class="radio-row">
 
-    <!-- Step 2: Media -->
-    <p class="section-label">Media</p>
-
-    <div class="field">
-      <label for="media">
-        <span id="media-label">Media file</span>
-        <span class="limit" id="media-spec"></span>
-      </label>
-      <input type="file" id="media" name="media" accept="video/*,image/*" required />
-    </div>
-
-    <div class="field" id="logo-field">
-      <label for="logo">Logo <span class="limit">PNG recommended, 100×100px circular</span></label>
-      <input type="file" id="logo" name="logo" accept="image/*" />
-    </div>
-
-    <hr class="divider" />
-
-    <!-- Step 3: Copy -->
-    <p class="section-label">Copy</p>
-
-    <div class="field" id="headline-field">
-      <label for="headline">
-        Headline
-        <span class="limit" id="headline-limit-label"></span>
-      </label>
-      <input type="text" id="headline" name="headline" maxlength="70" />
-      <div class="char-counter" id="headline-counter"></div>
-    </div>
-
-    <div class="field" id="body-field">
-      <label for="body">
-        Body copy
-        <span class="limit" id="body-limit-label"></span>
-      </label>
-      <textarea id="body" name="body"></textarea>
-      <div class="char-counter" id="body-counter"></div>
-    </div>
-
-    <div class="field" id="cta-field">
-      <label for="cta">
-        CTA
-        <span class="limit" id="cta-limit-label"></span>
-      </label>
-      <input type="text" id="cta" name="cta" />
-      <div class="char-counter" id="cta-counter"></div>
-    </div>
-
-    <hr class="divider" />
-
-    <!-- Step 4: Output options (video only) -->
-    <div id="video-options" class="hidden">
-      <p class="section-label">GIF Options</p>
-      <div class="row">
-        <div class="field">
-          <label for="fps">FPS</label>
-          <input type="number" id="fps" name="fps" value="15" min="1" max="30" />
+        <div class="radio-group">
+          <div class="radio-group-label">Device</div>
+          <label class="radio-option"><input type="radio" name="device" value="web" checked><span class="radio-custom"></span>Web (mobile)</label>
+          <label class="radio-option"><input type="radio" name="device" value="ios"><span class="radio-custom"></span>iOS</label>
+          <label class="radio-option"><input type="radio" name="device" value="android"><span class="radio-custom"></span>Android</label>
+          <label class="radio-option"><input type="radio" name="device" value="desktop"><span class="radio-custom"></span>Desktop</label>
         </div>
-        <div class="field">
-          <label for="duration">Duration (sec)</label>
-          <input type="number" id="duration" name="duration" value="5" min="1" max="30" step="0.5" />
+
+        <div class="radio-group">
+          <div class="radio-group-label">Ad Format</div>
+          <label class="radio-option"><input type="radio" name="ad_format" value="newsfeed" checked><span class="radio-custom"></span>Newsfeed</label>
+          <label class="radio-option"><input type="radio" name="ad_format" value="carousel"><span class="radio-custom"></span>Carousel</label>
+          <label class="radio-option"><input type="radio" name="ad_format" value="personalized"><span class="radio-custom"></span>Personalized</label>
+          <label class="radio-option"><input type="radio" name="ad_format" value="lead_gen"><span class="radio-custom"></span>Lead Gen</label>
         </div>
+
+      </div>
+
+      <!-- Second row: Type and Crop (shown/hidden based on format) -->
+      <div id="type-crop-row" class="radio-row" style="margin-bottom:0">
+
+        <div class="radio-group">
+          <div class="radio-group-label">Type</div>
+          <label class="radio-option"><input type="radio" name="media_type" value="image" checked><span class="radio-custom"></span>Image</label>
+          <label class="radio-option"><input type="radio" name="media_type" value="video"><span class="radio-custom"></span>Video <span style="font-size:11px;color:#576580;margin-left:4px">(renders as GIF)</span></label>
+        </div>
+
+        <div class="radio-group">
+          <div class="radio-group-label">Crop</div>
+          <label class="radio-option"><input type="radio" name="crop" value="1_1" checked><span class="radio-custom"></span>Square (1:1)</label>
+          <label class="radio-option"><input type="radio" name="crop" value="16_9"><span class="radio-custom"></span>Landscape (16:9)</label>
+        </div>
+
       </div>
     </div>
 
-    <button type="submit" id="submit-btn">Generate</button>
-  </form>
+    <!-- Card 2: Assets -->
+    <div class="card">
+      <div class="card-title">Assets</div>
 
-  <div id="status"></div>
-  <div id="download-wrap"><a id="dl-link" href="#">Download</a></div>
-</div>
+      <!-- Upload zones -->
+      <div class="upload-row">
+        <div class="upload-zone" id="logo-zone">
+          <input type="file" id="logo" name="logo" accept="image/*">
+          <div class="upload-icon">🖼</div>
+          <div class="upload-label">Upload logo</div>
+          <div class="upload-hint">Max 50MB</div>
+          <div class="upload-filename" id="logo-filename"></div>
+        </div>
+        <div class="upload-zone" id="media-zone">
+          <input type="file" id="media" name="media" accept="image/*,video/*" required>
+          <div class="upload-icon">📎</div>
+          <div class="upload-label">Upload media</div>
+          <div class="upload-hint">Max 150MB</div>
+          <div class="upload-filename" id="media-filename"></div>
+        </div>
+      </div>
+
+      <!-- Text fields -->
+      <div class="field" id="headline-field">
+        <label class="field-label" for="headline">Headline</label>
+        <input type="text" id="headline" name="headline" placeholder="Write your headline…">
+        <div class="char-counter" id="headline-counter">0/70</div>
+      </div>
+
+      <div class="field" id="body-field">
+        <label class="field-label" for="body">Description</label>
+        <textarea id="body" name="body" placeholder="Write your description…"></textarea>
+        <div class="char-counter" id="body-counter">0/1700</div>
+      </div>
+
+      <div class="field" id="cta-field" style="margin-bottom:0">
+        <label class="field-label" for="cta">CTA text</label>
+        <input type="text" id="cta" name="cta" placeholder="e.g. Learn More">
+        <div class="char-counter" id="cta-counter">0/45</div>
+      </div>
+    </div>
+
+    <!-- Hidden video options (kept for /generate compat) -->
+    <div id="video-options" class="hidden">
+      <input type="hidden" id="fps" name="fps" value="15">
+      <input type="hidden" id="duration" name="duration" value="5">
+    </div>
+
+  </div><!-- /left-col -->
+
+  <!-- Right column -->
+  <div class="right-col">
+    <div class="preview-panel">
+
+      <div class="preview-area" id="preview-area">
+        <div class="preview-placeholder" id="preview-placeholder">
+          <span class="preview-placeholder-icon">🖥</span>
+          Your mock will appear here
+        </div>
+        <img id="preview-frame-img" alt="Figma frame">
+        <div id="preview-media-layer">
+          <img id="preview-media-img" alt="Media preview" style="display:none">
+          <video id="preview-media-video" autoplay loop muted playsinline style="display:none"></video>
+        </div>
+        <div id="preview-logo-layer">
+          <img id="preview-logo-img" alt="Logo preview">
+        </div>
+      </div>
+
+      <div id="status-msg"></div>
+
+      <button class="generate-btn" id="submit-btn" type="button">Generate</button>
+
+      <div id="download-wrap">
+        <a id="dl-link" href="#">↓ Download mockup</a>
+      </div>
+
+    </div>
+  </div><!-- /right-col -->
+
+</div><!-- /layout -->
 
 <script>
-  // Format specs from server
   const FORMAT_SPECS = {{ format_specs | tojson }};
 
-  const formatSel = document.getElementById('format');
-  const mediaSel = document.getElementById('media');
-  const headlineInput = document.getElementById('headline');
-  const bodyInput = document.getElementById('body');
-  const ctaInput = document.getElementById('cta');
+  // ── State ──
+  let currentFrameData = null; // { frame_url, component, media_region, logo_region }
+  let mediaObjectURL = null;
+  let logoObjectURL = null;
 
-  function updateForFormat(key) {
-    const spec = FORMAT_SPECS[key];
-    if (!spec) return;
+  // ── Derive format_key from selections ──
+  function getFormatKey() {
+    const adFormat = document.querySelector('input[name="ad_format"]:checked')?.value;
+    const mediaType = document.querySelector('input[name="media_type"]:checked')?.value;
+    const crop = document.querySelector('input[name="crop"]:checked')?.value;
 
-    // Note
-    const noteEl = document.getElementById('format-note');
-    if (spec.note) {
-      noteEl.textContent = spec.note;
-      noteEl.classList.remove('hidden');
-    } else {
-      noteEl.classList.add('hidden');
-    }
-
-    // Media label + spec hint
-    document.getElementById('media-label').textContent =
-      spec.media_type === 'video' ? 'Video file' :
-      spec.media_type === 'image_or_video' ? 'Image or video' : 'Image file';
-    document.getElementById('media-spec').textContent =
-      spec.aspect_ratio + (spec.max_file_mb ? `, max ${spec.max_file_mb}MB` : '');
-
-    // Accept attribute
-    mediaSel.accept =
-      spec.media_type === 'video' ? 'video/*' :
-      spec.media_type === 'image' ? 'image/*' : 'video/*,image/*';
-
-    // Logo
-    toggle('logo-field', spec.has_logo);
-
-    // Headline
-    toggle('headline-field', !!spec.headline_limit);
-    if (spec.headline_limit) {
-      document.getElementById('headline-limit-label').textContent = `${spec.headline_limit} chars`;
-      headlineInput.maxLength = spec.headline_limit;
-      updateCounter('headline', spec.headline_limit);
-    }
-
-    // Body
-    toggle('body-field', spec.has_body);
-    if (spec.has_body && spec.body_limit) {
-      document.getElementById('body-limit-label').textContent = `${spec.body_limit} chars`;
-      bodyInput.maxLength = spec.body_limit;
-      updateCounter('body', spec.body_limit);
-    }
-
-    // CTA
-    toggle('cta-field', spec.has_cta);
-    if (spec.has_cta && spec.cta_limit) {
-      document.getElementById('cta-limit-label').textContent = `${spec.cta_limit} chars`;
-      ctaInput.maxLength = spec.cta_limit;
-      updateCounter('cta', spec.cta_limit);
-    }
-
-    // Video options
-    toggle('video-options', spec.media_type === 'video' || spec.media_type === 'image_or_video');
+    if (adFormat === 'carousel') return 'carousel';
+    if (adFormat === 'lead_gen') return 'lead_gen';
+    if (adFormat === 'personalized') return 'spotlight';
+    // newsfeed: derive from type + crop
+    if (mediaType === 'video') return `video_${crop}`;
+    return `image_${crop}`;
   }
 
-  function toggle(id, show) {
-    document.getElementById(id).classList.toggle('hidden', !show);
+  function getDevice() {
+    return document.querySelector('input[name="device"]:checked')?.value || 'web';
   }
 
-  function updateCounter(field, limit) {
+  // ── Toggle type/crop row ──
+  function updateFormatUI() {
+    const adFormat = document.querySelector('input[name="ad_format"]:checked')?.value;
+    const typeCropRow = document.getElementById('type-crop-row');
+    // Carousel and Lead Gen don't need type/crop selection
+    const showTypeCrop = adFormat === 'newsfeed' || adFormat === 'personalized';
+    typeCropRow.style.display = showTypeCrop ? '' : 'none';
+    triggerPreviewRefresh();
+  }
+
+  // ── Char counters ──
+  const LIMITS = { headline: 70, body: 1700, cta: 45 };
+  function updateCounter(field) {
     const input = document.getElementById(field);
     const counter = document.getElementById(`${field}-counter`);
-    if (!limit) { counter.textContent = ''; return; }
+    const max = LIMITS[field];
     const len = input.value.length;
-    counter.textContent = `${len} / ${limit}`;
-    counter.classList.toggle('over', len > limit);
+    counter.textContent = `${len}/${max}`;
+    counter.classList.toggle('over', len > max);
   }
 
-  // Wire up char counters
-  ['headline', 'body', 'cta'].forEach(field => {
-    document.getElementById(field).addEventListener('input', () => {
-      const spec = FORMAT_SPECS[formatSel.value];
-      const limit = spec?.[`${field}_limit`];
-      updateCounter(field, limit);
+  ['headline', 'body', 'cta'].forEach(f => {
+    document.getElementById(f).addEventListener('input', () => updateCounter(f));
+  });
+
+  // ── Upload zone feedback ──
+  function wireUploadZone(inputId, zoneId, filenameId) {
+    const input = document.getElementById(inputId);
+    const zone = document.getElementById(zoneId);
+    const fnEl = document.getElementById(filenameId);
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      if (file) {
+        zone.classList.add('has-file');
+        fnEl.textContent = file.name;
+      } else {
+        zone.classList.remove('has-file');
+        fnEl.textContent = '';
+      }
+      if (inputId === 'media') onMediaChange();
+      if (inputId === 'logo') onLogoChange();
     });
-  });
+  }
+  wireUploadZone('logo', 'logo-zone', 'logo-filename');
+  wireUploadZone('media', 'media-zone', 'media-filename');
 
-  // Format change
-  formatSel.addEventListener('change', () => updateForFormat(formatSel.value));
-  updateForFormat(formatSel.value);
-
-  // Also show video options if user picks a video file for image_or_video formats
-  mediaSel.addEventListener('change', () => {
-    const spec = FORMAT_SPECS[formatSel.value];
-    if (spec?.media_type === 'image_or_video') {
-      const isVid = mediaSel.files[0]?.type.startsWith('video/');
-      toggle('video-options', isVid);
+  // ── Live preview: media overlay ──
+  function onMediaChange() {
+    const file = document.getElementById('media').files[0];
+    if (mediaObjectURL) { URL.revokeObjectURL(mediaObjectURL); mediaObjectURL = null; }
+    if (!file) {
+      document.getElementById('preview-media-layer').style.display = 'none';
+      document.getElementById('preview-media-img').style.display = 'none';
+      document.getElementById('preview-media-video').style.display = 'none';
+      return;
     }
+    mediaObjectURL = URL.createObjectURL(file);
+    const isVid = file.type.startsWith('video/');
+    const imgEl = document.getElementById('preview-media-img');
+    const vidEl = document.getElementById('preview-media-video');
+    if (isVid) {
+      vidEl.src = mediaObjectURL;
+      vidEl.style.display = '';
+      imgEl.style.display = 'none';
+    } else {
+      imgEl.src = mediaObjectURL;
+      imgEl.style.display = '';
+      vidEl.style.display = 'none';
+    }
+    positionMediaLayer();
+    // show video-options hidden inputs based on type
+    document.getElementById('video-options').classList.toggle('hidden', !isVid);
+  }
+
+  function onLogoChange() {
+    const file = document.getElementById('logo').files[0];
+    if (logoObjectURL) { URL.revokeObjectURL(logoObjectURL); logoObjectURL = null; }
+    if (!file) {
+      document.getElementById('preview-logo-layer').style.display = 'none';
+      return;
+    }
+    logoObjectURL = URL.createObjectURL(file);
+    document.getElementById('preview-logo-img').src = logoObjectURL;
+    positionLogoLayer();
+  }
+
+  // ── Position overlay layers based on currentFrameData ──
+  function positionMediaLayer() {
+    if (!currentFrameData?.media_region) return;
+    const area = document.getElementById('preview-area');
+    const frameImg = document.getElementById('preview-frame-img');
+    if (frameImg.style.display === 'none' || !frameImg.naturalWidth) return;
+
+    const comp = currentFrameData.component;
+    const mr = currentFrameData.media_region;
+    const areaW = area.clientWidth;
+    const areaH = area.clientHeight;
+
+    // Figure out the rendered dimensions of the frame img (object-fit: contain)
+    const imgAspect = comp.width / comp.height;
+    const areaAspect = areaW / areaH;
+    let renderedW, renderedH, offsetX, offsetY;
+    if (imgAspect > areaAspect) {
+      renderedW = areaW;
+      renderedH = areaW / imgAspect;
+      offsetX = 0;
+      offsetY = (areaH - renderedH) / 2;
+    } else {
+      renderedH = areaH;
+      renderedW = areaH * imgAspect;
+      offsetY = 0;
+      offsetX = (areaW - renderedW) / 2;
+    }
+    const scaleX = renderedW / comp.width;
+    const scaleY = renderedH / comp.height;
+
+    const layer = document.getElementById('preview-media-layer');
+    layer.style.display = '';
+    layer.style.left   = `${offsetX + mr.x * scaleX}px`;
+    layer.style.top    = `${offsetY + mr.y * scaleY}px`;
+    layer.style.width  = `${mr.width * scaleX}px`;
+    layer.style.height = `${mr.height * scaleY}px`;
+  }
+
+  function positionLogoLayer() {
+    if (!currentFrameData?.logo_region) return;
+    const area = document.getElementById('preview-area');
+    const frameImg = document.getElementById('preview-frame-img');
+    if (frameImg.style.display === 'none' || !frameImg.naturalWidth) return;
+
+    const comp = currentFrameData.component;
+    const lr = currentFrameData.logo_region;
+    const areaW = area.clientWidth;
+    const areaH = area.clientHeight;
+
+    const imgAspect = comp.width / comp.height;
+    const areaAspect = areaW / areaH;
+    let renderedW, renderedH, offsetX, offsetY;
+    if (imgAspect > areaAspect) {
+      renderedW = areaW;
+      renderedH = areaW / imgAspect;
+      offsetX = 0;
+      offsetY = (areaH - renderedH) / 2;
+    } else {
+      renderedH = areaH;
+      renderedW = areaH * imgAspect;
+      offsetY = 0;
+      offsetX = (areaW - renderedW) / 2;
+    }
+    const scaleX = renderedW / comp.width;
+    const scaleY = renderedH / comp.height;
+
+    const logoLayer = document.getElementById('preview-logo-layer');
+    if (logoObjectURL) {
+      logoLayer.style.display = '';
+    }
+    logoLayer.style.left   = `${offsetX + lr.x * scaleX}px`;
+    logoLayer.style.top    = `${offsetY + lr.y * scaleY}px`;
+    logoLayer.style.width  = `${lr.width * scaleX}px`;
+    logoLayer.style.height = `${lr.height * scaleY}px`;
+  }
+
+  // ── Fetch frame from /api/frame ──
+  let fetchDebounceTimer = null;
+  function triggerPreviewRefresh() {
+    clearTimeout(fetchDebounceTimer);
+    fetchDebounceTimer = setTimeout(fetchFrame, 200);
+  }
+
+  async function fetchFrame() {
+    const device = getDevice();
+    const format_key = getFormatKey();
+    try {
+      const res = await fetch(`/api/frame?device=${encodeURIComponent(device)}&format=${encodeURIComponent(format_key)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.error) return;
+      currentFrameData = data;
+
+      const frameImg = document.getElementById('preview-frame-img');
+      const placeholder = document.getElementById('preview-placeholder');
+      frameImg.src = data.frame_url;
+      frameImg.style.display = '';
+      placeholder.style.display = 'none';
+
+      frameImg.onload = () => {
+        positionMediaLayer();
+        positionLogoLayer();
+      };
+      // If already cached/loaded
+      if (frameImg.complete && frameImg.naturalWidth) {
+        positionMediaLayer();
+        positionLogoLayer();
+      }
+    } catch (e) {
+      // silently fail — preview just won't update
+    }
+  }
+
+  // ── Wire up all radio changes ──
+  document.querySelectorAll('input[name="device"], input[name="ad_format"], input[name="media_type"], input[name="crop"]').forEach(el => {
+    el.addEventListener('change', updateFormatUI);
   });
 
-  // Form submit
-  document.getElementById('gen-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  // ── Generate button ──
+  document.getElementById('submit-btn').addEventListener('click', async () => {
     const btn = document.getElementById('submit-btn');
-    const status = document.getElementById('status');
+    const statusMsg = document.getElementById('status-msg');
     const dlWrap = document.getElementById('download-wrap');
     const dlLink = document.getElementById('dl-link');
+    const errorBanner = document.getElementById('error-banner');
+
+    const mediaFile = document.getElementById('media').files[0];
+    if (!mediaFile) {
+      showError('Please upload a media file.');
+      return;
+    }
 
     btn.disabled = true;
-    status.textContent = 'Generating… this may take a moment.';
+    statusMsg.textContent = 'Generating… this may take a moment.';
     dlWrap.style.display = 'none';
+    errorBanner.style.display = 'none';
 
     try {
-      const data = new FormData(e.target);
-      const res = await fetch('/generate', { method: 'POST', body: data });
+      const formData = new FormData();
+      formData.append('device', getDevice());
+      formData.append('format', getFormatKey());
+      formData.append('headline', document.getElementById('headline').value);
+      formData.append('body', document.getElementById('body').value);
+      formData.append('cta', document.getElementById('cta').value);
+      formData.append('fps', document.getElementById('fps').value || '15');
+      formData.append('duration', document.getElementById('duration').value || '5');
+      formData.append('media', mediaFile);
+      const logoFile = document.getElementById('logo').files[0];
+      if (logoFile) formData.append('logo', logoFile);
+
+      const res = await fetch('/generate', { method: 'POST', body: formData });
       const json = await res.json();
 
       if (json.error) {
-        status.textContent = 'Error: ' + json.error;
+        showError(json.error);
+        statusMsg.textContent = '';
       } else {
-        status.textContent = 'Done!';
+        statusMsg.textContent = 'Done!';
         dlLink.href = json.download_url;
         dlLink.textContent = `Download ${json.download_name}`;
         dlWrap.style.display = 'block';
       }
-    } catch {
-      status.textContent = 'Something went wrong. Try again.';
+    } catch (err) {
+      showError('Something went wrong. Try again.');
+      statusMsg.textContent = '';
     } finally {
       btn.disabled = false;
     }
   });
+
+  function showError(msg) {
+    const banner = document.getElementById('error-banner');
+    banner.textContent = msg;
+    banner.style.display = 'block';
+  }
+
+  // ── Init ──
+  updateFormatUI();
+  fetchFrame();
 </script>
 </body>
 </html>

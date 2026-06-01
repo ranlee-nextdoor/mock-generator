@@ -140,6 +140,22 @@ def debug():
     return jsonify(result)
 
 
+@app.route("/api/frame")
+def api_frame():
+    device = request.args.get("device", "web")
+    format_key = request.args.get("format", "image_1_1")
+    variant = figma_api.get_variant_config(device, format_key)
+    if not variant:
+        return jsonify({"error": "Not found"}), 404
+    url = figma_api.get_component_export_url(variant["node_id"])
+    return jsonify({
+        "frame_url": url,
+        "component": variant["component"],
+        "media_region": variant["media_region"],
+        "logo_region": variant["logo_region"],
+    })
+
+
 @app.route("/api/format-spec/<format_key>")
 def format_spec(format_key):
     spec = figma_api.get_format_spec(format_key)

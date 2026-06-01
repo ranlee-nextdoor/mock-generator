@@ -201,6 +201,18 @@ def get_variant_config(device_key: str, format_key: str) -> dict | None:
     return device["variants"].get(figma_variant)
 
 
+def get_component_export_url(node_id: str, scale: float = 2.0) -> str | None:
+    """Return the CDN URL for a Figma node PNG export (without downloading it)."""
+    if not FIGMA_TOKEN:
+        return None
+    url = f"{BASE_URL}/images/{FIGMA_FILE_KEY}"
+    params = {"ids": node_id, "format": "png", "scale": scale}
+    resp = requests.get(url, headers=HEADERS, params=params, timeout=30)
+    resp.raise_for_status()
+    images = resp.json().get("images", {})
+    return images.get(node_id) or images.get(node_id.replace(":", "-"))
+
+
 def export_component_png(node_id: str, scale: float = 2.0) -> bytes | None:
     """Export a Figma node as PNG and return raw bytes."""
     if not FIGMA_TOKEN:
