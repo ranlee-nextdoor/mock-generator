@@ -3,169 +3,383 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mock Generator</title>
+  <title>Ad Mock Generator</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f5f5f5;
+      background: #f2f2f2;
       color: #111;
       min-height: 100vh;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
-      padding: 2rem;
+      padding: 3rem 1rem;
     }
 
     .card {
       background: #fff;
-      border-radius: 12px;
+      border-radius: 16px;
       padding: 2.5rem;
       width: 100%;
-      max-width: 480px;
-      box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+      max-width: 560px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.07);
     }
 
-    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 2rem; }
+    h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .subtitle { font-size: 0.85rem; color: #777; margin-bottom: 2rem; }
 
-    .field { margin-bottom: 1.25rem; }
-    label { display: block; font-size: 0.8rem; font-weight: 600; color: #555; margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      margin-bottom: 0.75rem;
+      margin-top: 1.75rem;
+    }
 
-    input[type="file"],
+    .field { margin-bottom: 1rem; }
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 0.35rem;
+    }
+    label .limit { font-weight: 400; color: #aaa; font-size: 0.75rem; }
+
     select,
-    input[type="number"] {
+    input[type="text"],
+    input[type="number"],
+    input[type="file"],
+    textarea {
       width: 100%;
       padding: 0.6rem 0.8rem;
-      border: 1px solid #ddd;
+      border: 1.5px solid #e0e0e0;
       border-radius: 8px;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       background: #fafafa;
-      appearance: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
     }
+    select:focus,
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #111;
+      background: #fff;
+    }
+
+    textarea { resize: vertical; min-height: 80px; }
 
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
+    .char-counter {
+      font-size: 0.72rem;
+      color: #aaa;
+      text-align: right;
+      margin-top: 0.2rem;
+    }
+    .char-counter.over { color: #e03; }
+
+    .note {
+      font-size: 0.78rem;
+      color: #888;
+      background: #f7f7f7;
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .hidden { display: none !important; }
+
     button[type="submit"] {
       width: 100%;
-      padding: 0.75rem;
+      padding: 0.8rem;
       background: #111;
       color: #fff;
       border: none;
-      border-radius: 8px;
-      font-size: 1rem;
+      border-radius: 10px;
+      font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 0.5rem;
+      margin-top: 1.75rem;
       transition: background 0.15s;
     }
     button[type="submit"]:hover { background: #333; }
-    button[type="submit"]:disabled { background: #aaa; cursor: not-allowed; }
+    button[type="submit"]:disabled { background: #bbb; cursor: not-allowed; }
 
     #status {
-      margin-top: 1.25rem;
-      font-size: 0.9rem;
+      margin-top: 1rem;
+      font-size: 0.88rem;
       text-align: center;
-      min-height: 1.5rem;
-      color: #555;
+      color: #666;
+      min-height: 1.25rem;
     }
 
-    #download-link {
+    #download-wrap {
       display: none;
       margin-top: 1rem;
       text-align: center;
     }
-    #download-link a {
+    #download-wrap a {
       display: inline-block;
-      padding: 0.6rem 1.5rem;
+      padding: 0.6rem 1.75rem;
       background: #0055ff;
       color: #fff;
       border-radius: 8px;
       text-decoration: none;
       font-weight: 600;
+      font-size: 0.9rem;
     }
 
-    .no-templates {
-      color: #999;
-      font-size: 0.9rem;
-      text-align: center;
-      padding: 1rem 0;
+    .divider {
+      border: none;
+      border-top: 1px solid #eee;
+      margin: 1.75rem 0 0;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Mock Generator</h1>
+<div class="card">
+  <h1>Ad Mock Generator</h1>
+  <p class="subtitle">Build a preview mockup for any Nextdoor ad format.</p>
 
-    {% if not templates %}
-      <p class="no-templates">No templates configured yet.<br>Add one via the CLI to get started.</p>
-    {% else %}
-    <form id="gen-form">
-      <div class="field">
-        <label>Video file</label>
-        <input type="file" name="video" accept="video/*" required />
-      </div>
+  <form id="gen-form">
 
-      <div class="field">
-        <label>Template</label>
-        <select name="template" required>
-          {% for name in templates %}
-            <option value="{{ name }}">{{ name }}</option>
-          {% endfor %}
-        </select>
-      </div>
+    <!-- Step 1: Format selection -->
+    <p class="section-label">Format</p>
 
+    <div class="field">
+      <label for="device">Device</label>
+      <select id="device" name="device">
+        {% for key, label in devices.items() %}
+          <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="format">Ad Format</label>
+      <select id="format" name="format">
+        {% for key, label in formats.items() %}
+          <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="format-note" class="note hidden"></div>
+
+    <hr class="divider" />
+
+    <!-- Step 2: Media -->
+    <p class="section-label">Media</p>
+
+    <div class="field">
+      <label for="media">
+        <span id="media-label">Media file</span>
+        <span class="limit" id="media-spec"></span>
+      </label>
+      <input type="file" id="media" name="media" accept="video/*,image/*" required />
+    </div>
+
+    <div class="field" id="logo-field">
+      <label for="logo">Logo <span class="limit">PNG recommended, 100×100px circular</span></label>
+      <input type="file" id="logo" name="logo" accept="image/*" />
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Step 3: Copy -->
+    <p class="section-label">Copy</p>
+
+    <div class="field" id="headline-field">
+      <label for="headline">
+        Headline
+        <span class="limit" id="headline-limit-label"></span>
+      </label>
+      <input type="text" id="headline" name="headline" maxlength="70" />
+      <div class="char-counter" id="headline-counter"></div>
+    </div>
+
+    <div class="field" id="body-field">
+      <label for="body">
+        Body copy
+        <span class="limit" id="body-limit-label"></span>
+      </label>
+      <textarea id="body" name="body"></textarea>
+      <div class="char-counter" id="body-counter"></div>
+    </div>
+
+    <div class="field" id="cta-field">
+      <label for="cta">
+        CTA
+        <span class="limit" id="cta-limit-label"></span>
+      </label>
+      <input type="text" id="cta" name="cta" />
+      <div class="char-counter" id="cta-counter"></div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Step 4: Output options (video only) -->
+    <div id="video-options" class="hidden">
+      <p class="section-label">GIF Options</p>
       <div class="row">
         <div class="field">
-          <label>FPS</label>
-          <input type="number" name="fps" value="15" min="1" max="30" />
+          <label for="fps">FPS</label>
+          <input type="number" id="fps" name="fps" value="15" min="1" max="30" />
         </div>
         <div class="field">
-          <label>Duration (sec)</label>
-          <input type="number" name="duration" value="5" min="1" max="30" step="0.5" />
+          <label for="duration">Duration (sec)</label>
+          <input type="number" id="duration" name="duration" value="5" min="1" max="30" step="0.5" />
         </div>
       </div>
+    </div>
 
-      <button type="submit" id="submit-btn">Generate GIF</button>
-    </form>
+    <button type="submit" id="submit-btn">Generate</button>
+  </form>
 
-    <div id="status"></div>
-    <div id="download-link"><a href="#" id="dl-anchor">Download GIF</a></div>
-    {% endif %}
-  </div>
+  <div id="status"></div>
+  <div id="download-wrap"><a id="dl-link" href="#">Download</a></div>
+</div>
 
-  <script>
-    const form = document.getElementById("gen-form");
-    const status = document.getElementById("status");
-    const dlWrap = document.getElementById("download-link");
-    const dlAnchor = document.getElementById("dl-anchor");
-    const btn = document.getElementById("submit-btn");
+<script>
+  // Format specs from server
+  const FORMAT_SPECS = {{ format_specs | tojson }};
 
-    if (form) {
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        status.textContent = "Generating… this may take a moment.";
-        dlWrap.style.display = "none";
-        btn.disabled = true;
+  const formatSel = document.getElementById('format');
+  const mediaSel = document.getElementById('media');
+  const headlineInput = document.getElementById('headline');
+  const bodyInput = document.getElementById('body');
+  const ctaInput = document.getElementById('cta');
 
-        const data = new FormData(form);
-        try {
-          const res = await fetch("/generate", { method: "POST", body: data });
-          const json = await res.json();
-          if (json.error) {
-            status.textContent = "Error: " + json.error;
-          } else {
-            status.textContent = "Done!";
-            dlAnchor.href = json.download_url;
-            dlWrap.style.display = "block";
-          }
-        } catch (err) {
-          status.textContent = "Something went wrong. Try again.";
-        } finally {
-          btn.disabled = false;
-        }
-      });
+  function updateForFormat(key) {
+    const spec = FORMAT_SPECS[key];
+    if (!spec) return;
+
+    // Note
+    const noteEl = document.getElementById('format-note');
+    if (spec.note) {
+      noteEl.textContent = spec.note;
+      noteEl.classList.remove('hidden');
+    } else {
+      noteEl.classList.add('hidden');
     }
-  </script>
+
+    // Media label + spec hint
+    document.getElementById('media-label').textContent =
+      spec.media_type === 'video' ? 'Video file' :
+      spec.media_type === 'image_or_video' ? 'Image or video' : 'Image file';
+    document.getElementById('media-spec').textContent =
+      spec.aspect_ratio + (spec.max_file_mb ? `, max ${spec.max_file_mb}MB` : '');
+
+    // Accept attribute
+    mediaSel.accept =
+      spec.media_type === 'video' ? 'video/*' :
+      spec.media_type === 'image' ? 'image/*' : 'video/*,image/*';
+
+    // Logo
+    toggle('logo-field', spec.has_logo);
+
+    // Headline
+    toggle('headline-field', !!spec.headline_limit);
+    if (spec.headline_limit) {
+      document.getElementById('headline-limit-label').textContent = `${spec.headline_limit} chars`;
+      headlineInput.maxLength = spec.headline_limit;
+      updateCounter('headline', spec.headline_limit);
+    }
+
+    // Body
+    toggle('body-field', spec.has_body);
+    if (spec.has_body && spec.body_limit) {
+      document.getElementById('body-limit-label').textContent = `${spec.body_limit} chars`;
+      bodyInput.maxLength = spec.body_limit;
+      updateCounter('body', spec.body_limit);
+    }
+
+    // CTA
+    toggle('cta-field', spec.has_cta);
+    if (spec.has_cta && spec.cta_limit) {
+      document.getElementById('cta-limit-label').textContent = `${spec.cta_limit} chars`;
+      ctaInput.maxLength = spec.cta_limit;
+      updateCounter('cta', spec.cta_limit);
+    }
+
+    // Video options
+    toggle('video-options', spec.media_type === 'video' || spec.media_type === 'image_or_video');
+  }
+
+  function toggle(id, show) {
+    document.getElementById(id).classList.toggle('hidden', !show);
+  }
+
+  function updateCounter(field, limit) {
+    const input = document.getElementById(field);
+    const counter = document.getElementById(`${field}-counter`);
+    if (!limit) { counter.textContent = ''; return; }
+    const len = input.value.length;
+    counter.textContent = `${len} / ${limit}`;
+    counter.classList.toggle('over', len > limit);
+  }
+
+  // Wire up char counters
+  ['headline', 'body', 'cta'].forEach(field => {
+    document.getElementById(field).addEventListener('input', () => {
+      const spec = FORMAT_SPECS[formatSel.value];
+      const limit = spec?.[`${field}_limit`];
+      updateCounter(field, limit);
+    });
+  });
+
+  // Format change
+  formatSel.addEventListener('change', () => updateForFormat(formatSel.value));
+  updateForFormat(formatSel.value);
+
+  // Also show video options if user picks a video file for image_or_video formats
+  mediaSel.addEventListener('change', () => {
+    const spec = FORMAT_SPECS[formatSel.value];
+    if (spec?.media_type === 'image_or_video') {
+      const isVid = mediaSel.files[0]?.type.startsWith('video/');
+      toggle('video-options', isVid);
+    }
+  });
+
+  // Form submit
+  document.getElementById('gen-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const status = document.getElementById('status');
+    const dlWrap = document.getElementById('download-wrap');
+    const dlLink = document.getElementById('dl-link');
+
+    btn.disabled = true;
+    status.textContent = 'Generating… this may take a moment.';
+    dlWrap.style.display = 'none';
+
+    try {
+      const data = new FormData(e.target);
+      const res = await fetch('/generate', { method: 'POST', body: data });
+      const json = await res.json();
+
+      if (json.error) {
+        status.textContent = 'Error: ' + json.error;
+      } else {
+        status.textContent = 'Done!';
+        dlLink.href = json.download_url;
+        dlLink.textContent = `Download ${json.download_name}`;
+        dlWrap.style.display = 'block';
+      }
+    } catch {
+      status.textContent = 'Something went wrong. Try again.';
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
 </body>
 </html>
