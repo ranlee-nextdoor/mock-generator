@@ -9,7 +9,7 @@ from PIL import Image
 from werkzeug.utils import secure_filename
 
 import figma as figma_api
-from main import composite_frames, save_gif, video_to_frames
+from main import save_gif, video_to_frames
 
 app = Flask(__name__, template_folder="templates_html")
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB
@@ -31,6 +31,78 @@ def is_video(filename):
 
 def is_image(filename):
     return file_ext(filename) in IMAGE_EXTENSIONS
+
+
+def center_crop_to_square(img: Image.Image) -> Image.Image:
+    """Center-crop an image to a square."""
+    w, h = img.size
+    side = min(w, h)
+    left = (w - side) // 2
+    top = (h - side) // 2
+    return img.crop((left, top, left + side, top + side))
+
+
+def fit_media_to_region(img: Image.Image, region_w: int, region_h: int) -> Image.Image:
+    """
+    Fit media into the target region:
+    - If region is square (1:1): center-crop media to square first, then resize.
+    - If region is non-square: center-crop media to match region aspect ratio, then resize.
+    """
+    img = img.convert("RGBA")
+    src_w, src_h = img.size
+    target_ratio = region_w / region_h
+    src_ratio = src_w / src_h
+
+    if abs(src_ratio - target_ratio) > 0.01:
+        # Crop to match target aspect ratio
+        if src_ratio > target_ratio:
+            # Source is wider — crop sides
+            new_w = int(src_h * target_ratio)
+            left = (src_w - new_w) // 2
+            img = img.crop((left, 0, left + new_w, src_h))
+        else:
+            # Source is taller — crop top/bottom
+            new_h = int(src_w / target_ratio)
+            top = (src_h - new_h) // 2
+            img = img.crop((0, top, src_w, top + new_h))
+
+    return img.resize((region_w, region_h), Image.LANCZOS)
+
+
+def scale_region(region: dict, scale: float) -> dict:
+    return {k: int(v * scale) for k, v in region.items()}
+
+
+def build_frame(
+    media_frame: Image.Image,
+    mockup: Image.Image,
+    logo_img: Image.Image | None,
+    variant_config: dict,
+) -> Image.Image:
+    """Composite one media frame into the mockup at the correct region."""
+    base = mockup.copy().convert("RGBA")
+
+    # Scale factor: Figma exports at 2x by default
+    comp_w = variant_config["component"]["width"]
+    export_scale = base.width / comp_w
+
+    media_region = variant_config.get("media_region")
+    logo_region = variant_config.get("logo_region")
+
+    if media_region:
+        r = scale_region(media_region, export_scale)
+        fitted = fit_media_to_region(media_frame, r["width"], r["height"])
+        base.paste(fitted, (r["x"], r["y"]), fitted)
+
+    # Re-paste mockup chrome on top so UI overlays the media
+    base.paste(mockup, (0, 0), mockup)
+
+    if logo_img and logo_region:
+        r = scale_region(logo_region, export_scale)
+        logo = logo_img.convert("RGBA").resize((r["width"], r["height"]), Image.LANCZOS)
+        base.paste(logo, (r["x"], r["y"]), logo)
+
+    return base.convert("RGB")
 
 
 @app.route("/")
@@ -72,19 +144,19 @@ def generate():
     # Validate character limits
     errors = []
     if spec["headline_limit"] and len(headline) > spec["headline_limit"]:
-        errors.append(f"Headline exceeds {spec['headline_limit']} character limit")
+        errors.append(f"Headline exceeds {spec['headline_limit']} characters")
     if spec["body_limit"] and body and len(body) > spec["body_limit"]:
-        errors.append(f"Body exceeds {spec['body_limit']} character limit")
+        errors.append(f"Body exceeds {spec['body_limit']} characters")
     if spec["cta_limit"] and cta and len(cta) > spec["cta_limit"]:
-        errors.append(f"CTA exceeds {spec['cta_limit']} character limit")
+        errors.append(f"CTA exceeds {spec['cta_limit']} characters")
     if errors:
         return jsonify({"error": "; ".join(errors)}), 400
 
-    # Export the Figma device frame as the base mockup
-    node_id = figma_api.get_device_node_id(device_key)
-    mockup_bytes = figma_api.export_component_png(node_id) if node_id else None
+    # Get the specific Figma variant for this device + format combo
+    variant_config = figma_api.get_variant_config(device_key, format_key)
+    mockup_bytes = figma_api.export_component_png(variant_config["node_id"]) if variant_config else None
 
-    output_filename = f"{uuid.uuid4().hex}"
+    output_filename = uuid.uuid4().hex
 
     with tempfile.TemporaryDirectory() as tmpdir:
         media_path = os.path.join(tmpdir, secure_filename(media_file.filename))
@@ -95,27 +167,23 @@ def generate():
             logo_img = Image.open(logo_file).convert("RGBA")
 
         if is_video(media_file.filename):
-            # Video → GIF output
             frames = video_to_frames(media_path, fps, duration, tmpdir)
-
-            if mockup_bytes:
-                composited = composite_with_mockup(frames, mockup_bytes, logo_img, headline, body, cta)
+            if mockup_bytes and variant_config:
+                mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA")
+                composited = [build_frame(f, mockup, logo_img, variant_config) for f in frames]
             else:
                 composited = [f.convert("RGB") for f in frames]
-
             out_path = str(OUTPUT_DIR / f"{output_filename}.gif")
             save_gif(composited, out_path, fps)
             download_name = "mockup.gif"
 
         elif is_image(media_file.filename):
-            # Static image → PNG output
             media_img = Image.open(media_path).convert("RGBA")
-
-            if mockup_bytes:
-                result = composite_static(media_img, mockup_bytes, logo_img, headline, body, cta)
+            if mockup_bytes and variant_config:
+                mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA")
+                result = build_frame(media_img, mockup, logo_img, variant_config)
             else:
                 result = media_img.convert("RGB")
-
             out_path = str(OUTPUT_DIR / f"{output_filename}.png")
             result.save(out_path)
             download_name = "mockup.png"
@@ -127,45 +195,6 @@ def generate():
         "download_url": url_for("download", filename=Path(out_path).name),
         "download_name": download_name,
     })
-
-
-def composite_with_mockup(frames, mockup_bytes, logo_img, headline, body, cta):
-    """Composite video frames onto the Figma mockup export."""
-    mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA")
-    results = []
-    for frame in frames:
-        base = mockup.copy()
-        # Scale media to fill the mockup — centre crop
-        media = frame.convert("RGBA").resize(mockup.size, Image.LANCZOS)
-        # Place media behind the mockup frame
-        combined = Image.new("RGBA", mockup.size)
-        combined.paste(media, (0, 0))
-        combined.paste(base, (0, 0), base)
-        if logo_img:
-            combined = paste_logo(combined, logo_img)
-        results.append(combined.convert("RGB"))
-    return results
-
-
-def composite_static(media_img, mockup_bytes, logo_img, headline, body, cta):
-    """Composite a static image onto the Figma mockup export."""
-    mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA")
-    media = media_img.resize(mockup.size, Image.LANCZOS).convert("RGBA")
-    combined = Image.new("RGBA", mockup.size)
-    combined.paste(media, (0, 0))
-    combined.paste(mockup, (0, 0), mockup)
-    if logo_img:
-        combined = paste_logo(combined, logo_img)
-    return combined.convert("RGB")
-
-
-def paste_logo(base_img, logo_img, size=(100, 100), margin=20):
-    """Paste logo in the bottom-left corner."""
-    logo = logo_img.resize(size, Image.LANCZOS).convert("RGBA")
-    x = margin
-    y = base_img.height - size[1] - margin
-    base_img.paste(logo, (x, y), logo)
-    return base_img
 
 
 @app.route("/download/<filename>")
