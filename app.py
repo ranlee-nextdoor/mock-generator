@@ -113,6 +113,25 @@ def index():
     return render_template("index.html", devices=devices, formats=formats, format_specs=format_specs)
 
 
+@app.route("/api/debug")
+def debug():
+    import figma as f
+    token = os.environ.get("FIGMA_TOKEN")
+    file_key = os.environ.get("FIGMA_FILE_KEY", "WRPoyXiU5wyxxTOYt9WZsF")
+    variant = f.get_variant_config("web", "image_1_1")
+    result = {"token_set": bool(token), "token_prefix": token[:8] if token else None, "file_key": file_key, "variant_config": variant}
+    if variant:
+        try:
+            url_resp = f.export_component_png.__wrapped__ if hasattr(f.export_component_png, '__wrapped__') else None
+            import requests
+            r = requests.get(f"https://api.figma.com/v1/images/{file_key}", headers={"X-Figma-Token": token}, params={"ids": variant["node_id"], "format": "png", "scale": 1}, timeout=15)
+            result["figma_api_status"] = r.status_code
+            result["figma_api_response"] = r.json()
+        except Exception as e:
+            result["figma_api_error"] = str(e)
+    return jsonify(result)
+
+
 @app.route("/api/format-spec/<format_key>")
 def format_spec(format_key):
     spec = figma_api.get_format_spec(format_key)
