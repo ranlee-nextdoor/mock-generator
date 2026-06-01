@@ -80,29 +80,37 @@ def build_frame(
     variant_config: dict,
 ) -> Image.Image:
     """Composite one media frame into the mockup at the correct region."""
-    base = mockup.copy().convert("RGBA")
-
     # Scale factor: Figma exports at 2x by default
     comp_w = variant_config["component"]["width"]
-    export_scale = base.width / comp_w
+    export_scale = mockup.width / comp_w
 
     media_region = variant_config.get("media_region")
     logo_region = variant_config.get("logo_region")
 
+    # Punch a transparent hole in the mockup where the media goes
+    chrome = mockup.copy().convert("RGBA")
+    if media_region:
+        r = scale_region(media_region, export_scale)
+        # Clear the media placeholder area to transparent
+        chrome.paste((0, 0, 0, 0), (r["x"], r["y"], r["x"] + r["width"], r["y"] + r["height"]))
+
+    # Build composite: white base → media → mockup chrome (with hole) → logo
+    result = Image.new("RGBA", mockup.size, (255, 255, 255, 255))
+
     if media_region:
         r = scale_region(media_region, export_scale)
         fitted = fit_media_to_region(media_frame, r["width"], r["height"])
-        base.paste(fitted, (r["x"], r["y"]), fitted)
+        result.paste(fitted.convert("RGBA"), (r["x"], r["y"]))
 
-    # Re-paste mockup chrome on top so UI overlays the media
-    base.paste(mockup, (0, 0), mockup)
+    # Paste chrome (mockup with transparent media hole) on top
+    result.alpha_composite(chrome)
 
     if logo_img and logo_region:
         r = scale_region(logo_region, export_scale)
         logo = logo_img.convert("RGBA").resize((r["width"], r["height"]), Image.LANCZOS)
-        base.paste(logo, (r["x"], r["y"]), logo)
+        result.alpha_composite(logo, (r["x"], r["y"]))
 
-    return base.convert("RGB")
+    return result.convert("RGB")
 
 
 @app.route("/")
