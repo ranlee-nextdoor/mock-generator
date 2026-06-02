@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mock Maker — Nextdoor</title>
+  <script src="/static/gif.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -409,21 +410,14 @@
 
       </div>
 
-      <!-- Second row: Type and Crop (shown/hidden based on format) -->
-      <div id="type-crop-row" class="radio-row" style="margin-bottom:0">
-
-        <div class="radio-group">
-          <div class="radio-group-label">Type</div>
-          <label class="radio-option"><input type="radio" name="media_type" value="image" checked><span class="radio-custom"></span>Image</label>
-          <label class="radio-option"><input type="radio" name="media_type" value="video"><span class="radio-custom"></span>Video <span style="font-size:11px;color:#576580;margin-left:4px">(renders as GIF)</span></label>
-        </div>
-
+      <!-- Crop row -->
+      <div class="radio-row" style="margin-bottom:0">
         <div class="radio-group">
           <div class="radio-group-label">Crop</div>
           <label class="radio-option"><input type="radio" name="crop" value="1_1" checked><span class="radio-custom"></span>Square (1:1)</label>
           <label class="radio-option"><input type="radio" name="crop" value="16_9"><span class="radio-custom"></span>Landscape (16:9)</label>
         </div>
-
+        <div class="radio-group"></div><!-- spacer -->
       </div>
     </div>
 
@@ -457,6 +451,7 @@
           <div class="upload-label">Upload media</div>
           <div class="upload-hint">Max 150MB</div>
           <div class="upload-filename" id="media-filename"></div>
+          <div id="video-note" style="display:none;font-size:11px;color:#576580;margin-top:4px;">Video will render as GIF</div>
         </div>
       </div>
 
@@ -532,16 +527,20 @@
   let logoObjectURL = null;
 
   // ── Derive format_key from selections ──
+  function getMediaType() {
+    const file = document.getElementById('media').files[0];
+    return file?.type.startsWith('video/') ? 'video' : 'image';
+  }
+
   function getFormatKey() {
     const adFormat = document.querySelector('input[name="ad_format"]:checked')?.value;
-    const mediaType = document.querySelector('input[name="media_type"]:checked')?.value;
     const crop = document.querySelector('input[name="crop"]:checked')?.value;
 
     if (adFormat === 'carousel') return 'carousel';
     if (adFormat === 'lead_gen') return 'lead_gen';
     if (adFormat === 'personalized') return 'spotlight';
-    // newsfeed: derive from type + crop
-    if (mediaType === 'video') return `video_${crop}`;
+    // newsfeed: derive from detected media type + crop
+    if (getMediaType() === 'video') return `video_${crop}`;
     return `image_${crop}`;
   }
 
@@ -583,7 +582,11 @@
         zone.classList.remove('has-file');
         fnEl.textContent = '';
       }
-      if (inputId === 'media') onMediaChange();
+      if (inputId === 'media') {
+        onMediaChange();
+        document.getElementById('video-note').style.display =
+          (input.files[0]?.type.startsWith('video/')) ? '' : 'none';
+      }
       if (inputId === 'logo') onLogoChange();
     });
   }
@@ -748,6 +751,131 @@
     el.addEventListener('change', updateFormatUI);
   });
 
+  // ── Client-side GIF generation helpers ──
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  function seekVideo(video, time) {
+    return new Promise(resolve => {
+      video.currentTime = time;
+      video.onseeked = resolve;
+    });
+  }
+
+  function drawCropped(ctx, source, dx, dy, dw, dh) {
+    const sw = source.videoWidth || source.naturalWidth || source.width;
+    const sh = source.videoHeight || source.naturalHeight || source.height;
+    const targetRatio = dw / dh;
+    const srcRatio = sw / sh;
+    let sx, sy, sWidth, sHeight;
+    if (srcRatio > targetRatio) {
+      sHeight = sh;
+      sWidth = sh * targetRatio;
+      sx = (sw - sWidth) / 2;
+      sy = 0;
+    } else {
+      sWidth = sw;
+      sHeight = sw / targetRatio;
+      sx = 0;
+      sy = (sh - sHeight) / 2;
+    }
+    ctx.drawImage(source, sx, sy, sWidth, sHeight, dx, dy, dw, dh);
+  }
+
+  async function generateGifClientSide(mediaFile, logoFile, variantConfig) {
+    const fps = 10;
+    const maxDuration = 4;
+    const outputWidth = 400;
+
+    const statusMsg = document.getElementById('status-msg');
+
+    // 1. Load the Figma frame image via our proxy
+    const frameImg = await loadImage('/api/frame-image?device=' + encodeURIComponent(getDevice()) + '&format=' + encodeURIComponent(getFormatKey()));
+
+    // 2. Load logo if present
+    const logoImg = logoFile ? await loadImage(URL.createObjectURL(logoFile)) : null;
+
+    // 3. Set up video element
+    const video = document.createElement('video');
+    video.src = URL.createObjectURL(mediaFile);
+    video.muted = true;
+    video.playsInline = true;
+    await new Promise(r => { video.onloadedmetadata = r; video.load(); });
+
+    const duration = Math.min(video.duration, maxDuration);
+    const totalFrames = Math.floor(duration * fps);
+    const interval = 1 / fps;
+
+    // 4. Set up canvas
+    const comp = variantConfig.component;
+    const scale = outputWidth / comp.width;
+    const outputHeight = Math.round(comp.height * scale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
+    const ctx = canvas.getContext('2d');
+
+    // Pre-compute scaled regions
+    const mr = variantConfig.media_region;
+    const lr = variantConfig.logo_region;
+    const smr = mr ? { x: mr.x * scale, y: mr.y * scale, w: mr.width * scale, h: mr.height * scale } : null;
+    const slr = lr ? { x: lr.x * scale, y: lr.y * scale, w: lr.width * scale, h: lr.height * scale } : null;
+
+    // 5. Create GIF encoder
+    const gif = new GIF({
+      workers: 2,
+      quality: 10,
+      width: outputWidth,
+      height: outputHeight,
+      workerScript: '/static/gif.worker.js',
+    });
+
+    gif.on('progress', p => {
+      statusMsg.textContent = `Encoding GIF… ${Math.round(p * 100)}%`;
+    });
+
+    // 6. Capture frames
+    for (let i = 0; i < totalFrames; i++) {
+      statusMsg.textContent = `Capturing frames… ${i + 1}/${totalFrames}`;
+      const t = i * interval;
+      await seekVideo(video, t);
+
+      ctx.clearRect(0, 0, outputWidth, outputHeight);
+
+      // Draw media cropped to region
+      if (smr) {
+        drawCropped(ctx, video, smr.x, smr.y, smr.w, smr.h);
+      }
+
+      // Draw Figma frame chrome on top
+      ctx.drawImage(frameImg, 0, 0, outputWidth, outputHeight);
+
+      // Draw logo
+      if (logoImg && slr) {
+        ctx.drawImage(logoImg, slr.x, slr.y, slr.w, slr.h);
+      }
+
+      gif.addFrame(ctx, { copy: true, delay: Math.round(1000 / fps) });
+    }
+
+    // 7. Render and return blob URL
+    return new Promise((resolve, reject) => {
+      gif.on('finished', blob => {
+        resolve(URL.createObjectURL(blob));
+      });
+      gif.on('error', reject);
+      gif.render();
+    });
+  }
+
   // ── Generate button ──
   document.getElementById('submit-btn').addEventListener('click', async () => {
     const btn = document.getElementById('submit-btn');
@@ -763,37 +891,54 @@
     }
 
     btn.disabled = true;
-    statusMsg.textContent = 'Generating… this may take a moment.';
+    statusMsg.textContent = 'Generating…';
     dlWrap.style.display = 'none';
     errorBanner.style.display = 'none';
 
     try {
-      const formData = new FormData();
-      formData.append('device', getDevice());
-      formData.append('format', getFormatKey());
-      formData.append('headline', document.getElementById('headline').value);
-      formData.append('body', document.getElementById('body').value);
-      formData.append('cta', document.getElementById('cta').value);
-      formData.append('fps', document.getElementById('fps').value || '15');
-      formData.append('duration', document.getElementById('duration').value || '5');
-      formData.append('media', mediaFile);
-      const logoFile = document.getElementById('logo').files[0];
-      if (logoFile) formData.append('logo', logoFile);
-
-      const res = await fetch('/generate', { method: 'POST', body: formData });
-      const json = await res.json();
-
-      if (json.error) {
-        showError(json.error);
-        statusMsg.textContent = '';
-      } else {
+      if (mediaFile.type.startsWith('video/')) {
+        // Client-side GIF generation
+        statusMsg.textContent = 'Capturing frames… this may take a moment.';
+        const gifUrl = await generateGifClientSide(
+          mediaFile,
+          document.getElementById('logo').files[0] || null,
+          currentFrameData
+        );
         statusMsg.textContent = 'Done!';
-        dlLink.href = json.download_url;
-        dlLink.textContent = `Download ${json.download_name}`;
+        dlLink.href = gifUrl;
+        dlLink.download = 'mockup.gif';
+        dlLink.textContent = 'Download mockup.gif';
         dlWrap.style.display = 'block';
+      } else {
+        // Server-side PNG generation (images unchanged)
+        const formData = new FormData();
+        formData.append('device', getDevice());
+        formData.append('format', getFormatKey());
+        formData.append('headline', document.getElementById('headline').value);
+        formData.append('body', document.getElementById('body').value);
+        formData.append('cta', document.getElementById('cta').value);
+        formData.append('fps', document.getElementById('fps').value || '10');
+        formData.append('duration', document.getElementById('duration').value || '4');
+        formData.append('media', mediaFile);
+        const logoFile = document.getElementById('logo').files[0];
+        if (logoFile) formData.append('logo', logoFile);
+
+        const res = await fetch('/generate', { method: 'POST', body: formData });
+        const json = await res.json();
+
+        if (json.error) {
+          showError(json.error);
+          statusMsg.textContent = '';
+        } else {
+          statusMsg.textContent = 'Done!';
+          dlLink.href = json.download_url;
+          dlLink.download = json.download_name;
+          dlLink.textContent = `Download ${json.download_name}`;
+          dlWrap.style.display = 'block';
+        }
       }
     } catch (err) {
-      showError('Something went wrong. Try again.');
+      showError('Something went wrong: ' + (err.message || err));
       statusMsg.textContent = '';
     } finally {
       btn.disabled = false;

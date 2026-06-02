@@ -4,7 +4,7 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, send_file, url_for
+from flask import Flask, jsonify, render_template, request, send_file, send_from_directory, url_for
 from PIL import Image
 from werkzeug.utils import secure_filename
 
@@ -117,6 +117,11 @@ def build_frame(
         scale = target_w / final.width
         final = final.resize((target_w, int(final.height * scale)), Image.LANCZOS)
     return final
+
+
+@app.route("/static/<path:filename>")
+def static_files(filename):
+    return send_from_directory(Path(__file__).parent / "static", filename)
 
 
 @app.route("/")
