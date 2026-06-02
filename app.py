@@ -147,13 +147,28 @@ def api_frame():
     variant = figma_api.get_variant_config(device, format_key)
     if not variant:
         return jsonify({"error": "Not found"}), 404
-    url = figma_api.get_component_export_url(variant["node_id"])
+    # Return proxied URL so the browser doesn't hit CORS on the Figma S3 URL
+    proxy_url = url_for("frame_image", device=device, format=format_key)
     return jsonify({
-        "frame_url": url,
+        "frame_url": proxy_url,
         "component": variant["component"],
         "media_region": variant["media_region"],
         "logo_region": variant["logo_region"],
     })
+
+
+@app.route("/api/frame-image")
+def frame_image():
+    """Proxy the Figma frame PNG through our server to avoid browser CORS issues."""
+    device = request.args.get("device", "web")
+    format_key = request.args.get("format", "image_1_1")
+    variant = figma_api.get_variant_config(device, format_key)
+    if not variant:
+        return "Not found", 404
+    png_bytes = figma_api.export_component_png(variant["node_id"])
+    if not png_bytes:
+        return "Failed to fetch from Figma", 502
+    return png_bytes, 200, {"Content-Type": "image/png", "Cache-Control": "public, max-age=300"}
 
 
 @app.route("/api/format-spec/<format_key>")
