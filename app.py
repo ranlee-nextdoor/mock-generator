@@ -110,7 +110,13 @@ def build_frame(
         logo = logo_img.convert("RGBA").resize((r["width"], r["height"]), Image.LANCZOS)
         result.alpha_composite(logo, (r["x"], r["y"]))
 
-    return result.convert("RGB")
+    final = result.convert("RGB")
+    # Resize output to 400px wide to reduce file size and memory
+    target_w = 400
+    if final.width > target_w:
+        scale = target_w / final.width
+        final = final.resize((target_w, int(final.height * scale)), Image.LANCZOS)
+    return final
 
 
 @app.route("/")
@@ -186,8 +192,8 @@ def generate():
     headline = request.form.get("headline", "")
     body = request.form.get("body", "")
     cta = request.form.get("cta", "")
-    fps = int(request.form.get("fps", 15))
-    duration = float(request.form.get("duration", 5))
+    fps = min(int(request.form.get("fps", 10)), 12)      # cap at 12fps
+    duration = min(float(request.form.get("duration", 3)), 4.0)  # cap at 4s
 
     spec = figma_api.get_format_spec(format_key)
     if not spec:
@@ -210,9 +216,9 @@ def generate():
     if errors:
         return jsonify({"error": "; ".join(errors)}), 400
 
-    # Get the specific Figma variant for this device + format combo
+    # Get the specific Figma variant for this device + format combo (export at 1x to save memory)
     variant_config = figma_api.get_variant_config(device_key, format_key)
-    mockup_bytes = figma_api.export_component_png(variant_config["node_id"]) if variant_config else None
+    mockup_bytes = figma_api.export_component_png(variant_config["node_id"], scale=1.0) if variant_config else None
 
     output_filename = uuid.uuid4().hex
 
@@ -226,13 +232,15 @@ def generate():
 
         if is_video(media_file.filename):
             frames = video_to_frames(media_path, fps, duration, tmpdir)
-            if mockup_bytes and variant_config:
-                mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA")
-                composited = [build_frame(f, mockup, logo_img, variant_config) for f in frames]
-            else:
-                composited = [f.convert("RGB") for f in frames]
+            mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA") if mockup_bytes else None
+            composited = []
+            for f in frames:
+                frame = build_frame(f, mockup, logo_img, variant_config) if mockup and variant_config else f.convert("RGB")
+                composited.append(frame)
+                del f  # free raw frame immediately
             out_path = str(OUTPUT_DIR / f"{output_filename}.gif")
             save_gif(composited, out_path, fps)
+            del composited  # free after save
             download_name = "mockup.gif"
 
         elif is_image(media_file.filename):
