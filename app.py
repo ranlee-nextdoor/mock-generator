@@ -73,11 +73,75 @@ def scale_region(region: dict, scale: float) -> dict:
     return {k: int(v * scale) for k, v in region.items()}
 
 
+FONT_PATH = Path(__file__).parent / "static" / "Saans.ttf"
+STATIC_DIR = Path(__file__).parent / "static"
+
+# Text layer positions at 1x (from Figma), for Newsfeed 1x1 frame (365px wide)
+TEXT_LAYERS = {
+    "advertiser": {"x": 64,  "y": 17,  "width": 280, "size": 14, "weight": "Regular",  "color": (35, 47, 70)},
+    "headline":   {"x": 16,  "y": 80,  "width": 333, "size": 16, "weight": "SemiBold", "color": (35, 47, 70)},
+    "body":       {"x": 16,  "y": 120, "width": 333, "size": 16, "weight": "Regular",  "color": (35, 47, 70)},
+    "cta":        {"x": 16,  "y": 554, "width": 298, "size": 14, "weight": "Regular",  "color": (35, 47, 70)},
+}
+
+def get_font(size_px: float, weight: str = "Regular"):
+    """Load Saans TTF at the given size. Falls back to default if unavailable."""
+    try:
+        from PIL import ImageFont
+        return ImageFont.truetype(str(FONT_PATH), int(size_px))
+    except Exception:
+        from PIL import ImageFont
+        return ImageFont.load_default()
+
+def wrap_text(text: str, font, max_width: int, draw) -> list[str]:
+    """Wrap text to fit within max_width pixels."""
+    words = text.split()
+    lines, current = [], ""
+    for word in words:
+        test = (current + " " + word).strip()
+        bbox = draw.textbbox((0, 0), test, font=font)
+        if bbox[2] <= max_width:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+    return lines or [""]
+
+def draw_text_layers(result: Image.Image, texts: dict, scale: float) -> Image.Image:
+    """Render advertiser, headline, body, CTA onto the image at scaled positions."""
+    from PIL import ImageDraw
+    draw = ImageDraw.Draw(result)
+    line_height_ratio = 18.4 / 14.73  # from Figma spec
+
+    for field, layer in TEXT_LAYERS.items():
+        text = texts.get(field, "").strip()
+        if not text:
+            continue
+        size = layer["size"] * scale
+        font = get_font(size, layer["weight"])
+        line_h = size * line_height_ratio
+        x = int(layer["x"] * scale)
+        y = int(layer["y"] * scale)
+        max_w = int(layer["width"] * scale)
+        color = layer["color"]
+
+        lines = wrap_text(text, font, max_w, draw)
+        for line in lines:
+            draw.text((x, y), line, font=font, fill=color)
+            y += int(line_h)
+
+    return result
+
+
 def build_frame(
     media_frame: Image.Image,
     mockup: Image.Image,
     logo_img: Image.Image | None,
     variant_config: dict,
+    texts: dict | None = None,
 ) -> Image.Image:
     """Composite one media frame into the mockup at the correct region."""
     # Scale factor: Figma exports at 2x by default
@@ -111,6 +175,10 @@ def build_frame(
         result.alpha_composite(logo, (r["x"], r["y"]))
 
     final = result.convert("RGB")
+
+    # Render text layers
+    if texts:
+        final = draw_text_layers(final, texts, export_scale)
     # Resize output to 400px wide to reduce file size and memory
     target_w = 400
     if final.width > target_w:
@@ -211,8 +279,10 @@ def generate():
     headline = request.form.get("headline", "")
     body = request.form.get("body", "")
     cta = request.form.get("cta", "")
-    fps = min(int(request.form.get("fps", 10)), 12)      # cap at 12fps
-    duration = min(float(request.form.get("duration", 3)), 4.0)  # cap at 4s
+    advertiser = request.form.get("advertiser", "")
+    fps = min(int(request.form.get("fps", 10)), 12)
+    duration = min(float(request.form.get("duration", 3)), 4.0)
+    texts = {"advertiser": advertiser, "headline": headline, "body": body, "cta": cta}
 
     spec = figma_api.get_format_spec(format_key)
     if not spec:
@@ -254,7 +324,7 @@ def generate():
             mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA") if mockup_bytes else None
             composited = []
             for f in frames:
-                frame = build_frame(f, mockup, logo_img, variant_config) if mockup and variant_config else f.convert("RGB")
+                frame = build_frame(f, mockup, logo_img, variant_config, texts) if mockup and variant_config else f.convert("RGB")
                 composited.append(frame)
                 del f  # free raw frame immediately
             out_path = str(OUTPUT_DIR / f"{output_filename}.gif")
@@ -266,7 +336,7 @@ def generate():
             media_img = Image.open(media_path).convert("RGBA")
             if mockup_bytes and variant_config:
                 mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA")
-                result = build_frame(media_img, mockup, logo_img, variant_config)
+                result = build_frame(media_img, mockup, logo_img, variant_config, texts)
             else:
                 result = media_img.convert("RGB")
             out_path = str(OUTPUT_DIR / f"{output_filename}.png")

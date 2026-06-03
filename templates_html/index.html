@@ -6,6 +6,14 @@
   <title>Mock Maker — Nextdoor</title>
   <script src="/static/gif.js"></script>
   <style>
+    @font-face {
+      font-family: 'Saans';
+      src: url('/static/SaansVFUprights.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+  </style>
+  <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
@@ -133,7 +141,7 @@
     }
     .upload-zone {
       background: #f0f2f5;
-      border: 1.5px dashed #cad3e5;
+      border: none;
       border-radius: 12px;
       padding: 20px 16px;
       text-align: center;
@@ -146,8 +154,7 @@
       background: #e8eaed;
     }
     .upload-zone.has-file {
-      border-color: #1B8751;
-      background: #f0f7f3;
+      background: #e6f4ed;
     }
     .upload-zone input[type="file"] {
       position: absolute;
@@ -384,13 +391,6 @@
     <div class="left-col-title">Assets</div>
 
     <!-- Upload zones -->
-    <!-- Advertiser -->
-    <div class="field">
-      <label class="field-label" for="advertiser">Advertiser name</label>
-      <input type="text" id="advertiser" name="advertiser" placeholder="e.g. Green Thumb Landscaping" maxlength="70">
-      <div class="char-counter" id="advertiser-counter">0/70</div>
-    </div>
-
     <div class="upload-row">
       <div class="upload-zone" id="logo-zone">
         <input type="file" id="logo" name="logo" accept="image/*">
@@ -418,6 +418,12 @@
         <div class="upload-filename" id="media-filename"></div>
         <div id="video-note" style="display:none;font-size:11px;color:#576580;margin-top:4px;">Video will render as GIF</div>
       </div>
+    </div>
+
+    <!-- Advertiser -->
+    <div class="field">
+      <label class="field-label" for="advertiser">Advertiser name</label>
+      <input type="text" id="advertiser" name="advertiser" placeholder="e.g. Green Thumb Landscaping" maxlength="70">
     </div>
 
     <!-- Headline -->
@@ -522,7 +528,7 @@
   }
 
   // ── Char counters ──
-  const LIMITS = { advertiser: 70, headline: 70, body: 1700, cta: 45 };
+  const LIMITS = { headline: 70, body: 1700, cta: 45 };
   function updateCounter(field) {
     const input = document.getElementById(field);
     const counter = document.getElementById(`${field}-counter`);
@@ -532,7 +538,7 @@
     counter.classList.toggle('over', len > max);
   }
 
-  ['advertiser', 'headline', 'body', 'cta'].forEach(f => {
+  ['headline', 'body', 'cta'].forEach(f => {
     document.getElementById(f).addEventListener('input', () => updateCounter(f));
   });
 
@@ -720,6 +726,57 @@
   });
 
   // ── Client-side GIF generation helpers ──
+  // Text layer definitions (1x Figma coordinates, Newsfeed 1x1 frame 365px wide)
+  const TEXT_LAYERS = {
+    advertiser: { x: 64,  y: 17,  width: 280, size: 14, weight: '400', color: '#232f46' },
+    headline:   { x: 16,  y: 80,  width: 333, size: 16, weight: '600', color: '#232f46' },
+    body:       { x: 16,  y: 120, width: 333, size: 16, weight: '400', color: '#232f46' },
+    cta:        { x: 16,  y: 554, width: 298, size: 14, weight: '400', color: '#232f46' },
+  };
+  const LINE_HEIGHT_RATIO = 18.4 / 14.73;
+
+  function wrapText(ctx, text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+      const test = current ? current + ' ' + word : word;
+      if (ctx.measureText(test).width <= maxWidth) {
+        current = test;
+      } else {
+        if (current) lines.push(current);
+        current = word;
+      }
+    }
+    if (current) lines.push(current);
+    return lines.length ? lines : [''];
+  }
+
+  function drawTextLayers(ctx, scale, compWidth) {
+    const texts = {
+      advertiser: document.getElementById('advertiser')?.value || '',
+      headline: document.getElementById('headline')?.value || '',
+      body: document.getElementById('body')?.value || '',
+      cta: document.getElementById('cta')?.value || '',
+    };
+    for (const [field, layer] of Object.entries(TEXT_LAYERS)) {
+      const text = texts[field]?.trim();
+      if (!text) continue;
+      const size = layer.size * scale;
+      const lineH = size * LINE_HEIGHT_RATIO;
+      ctx.font = `${layer.weight} ${size}px 'Saans', system-ui, sans-serif`;
+      ctx.fillStyle = layer.color;
+      ctx.textBaseline = 'top';
+      const maxW = layer.width * scale;
+      const lines = wrapText(ctx, text, maxW);
+      let y = layer.y * scale;
+      for (const line of lines) {
+        ctx.fillText(line, layer.x * scale, y);
+        y += lineH;
+      }
+    }
+  }
+
   function loadImage(src) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -763,6 +820,12 @@
     const outputWidth = 400;
 
     const statusMsg = document.getElementById('status-msg');
+
+    // Preload Saans so canvas has the font ready before drawing
+    await Promise.all([
+      document.fonts.load(`400 16px 'Saans'`),
+      document.fonts.load(`600 16px 'Saans'`),
+    ]);
 
     const frameImg = await loadImage('/api/frame-image?device=' + encodeURIComponent(getDevice()) + '&format=' + encodeURIComponent(getFormatKey()));
     const logoImg = logoFile ? await loadImage(URL.createObjectURL(logoFile)) : null;
@@ -812,6 +875,9 @@
       ctx.fillRect(0, 0, outputWidth, outputHeight);
 
       if (smr) drawCropped(ctx, video, smr.x, smr.y, smr.w, smr.h);
+
+      // Draw text layers (above media, below chrome)
+      drawTextLayers(ctx, scale, comp.width);
 
       ctx.save();
       ctx.beginPath();
@@ -871,6 +937,7 @@
         const formData = new FormData();
         formData.append('device', getDevice());
         formData.append('format', getFormatKey());
+        formData.append('advertiser', document.getElementById('advertiser').value);
         formData.append('headline', document.getElementById('headline').value);
         formData.append('body', document.getElementById('body').value);
         formData.append('cta', document.getElementById('cta').value);
