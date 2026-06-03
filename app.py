@@ -170,15 +170,29 @@ def api_frame():
 
 @app.route("/api/frame-image")
 def frame_image():
-    """Proxy the Figma frame PNG through our server to avoid browser CORS issues."""
+    """Proxy the Figma frame PNG, optionally with the media region punched out to transparent."""
     device = request.args.get("device", "web")
     format_key = request.args.get("format", "image_1_1")
+    punch = request.args.get("punch", "0") == "1"
     variant = figma_api.get_variant_config(device, format_key)
     if not variant:
         return "Not found", 404
     png_bytes = figma_api.export_component_png(variant["node_id"])
     if not png_bytes:
         return "Failed to fetch from Figma", 502
+
+    if punch and variant.get("media_region"):
+        # Punch the media region transparent so client-side canvas can draw video through it
+        mockup = Image.open(io.BytesIO(png_bytes)).convert("RGBA")
+        comp_w = variant["component"]["width"]
+        export_scale = mockup.width / comp_w
+        mr = variant["media_region"]
+        r = scale_region(mr, export_scale)
+        mockup.paste((0, 0, 0, 0), (r["x"], r["y"], r["x"] + r["width"], r["y"] + r["height"]))
+        buf = io.BytesIO()
+        mockup.save(buf, format="PNG")
+        png_bytes = buf.getvalue()
+
     return png_bytes, 200, {"Content-Type": "image/png", "Cache-Control": "public, max-age=300"}
 
 

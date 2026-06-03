@@ -10,35 +10,26 @@
 
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      background: #fff;
+      background: #f0f2f5;
       color: #232f46;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
     }
 
-    /* ── Header ── */
+    /* ── Fixed Header ── */
     .header {
-      width: 100%;
-      padding: 20px 32px;
-      border-bottom: 1px solid #cad3e5;
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
+      right: 0;
       background: #fff;
+      border-bottom: 1px solid #cad3e5;
       z-index: 100;
     }
-    .header-inner {
-      max-width: 1280px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .header-logo {
+    .header-top {
       display: flex;
       align-items: center;
       gap: 8px;
-      text-decoration: none;
+      padding: 20px 83px;
     }
     .header-wordmark {
       font-size: 22px;
@@ -46,17 +37,47 @@
       color: #1B8751;
       letter-spacing: -0.5px;
     }
-    .header-sep {
-      width: 1px;
-      height: 18px;
-      background: #cad3e5;
-      margin: 0 10px;
-    }
     .header-title {
       font-size: 22px;
       font-weight: 700;
       color: #232f46;
       letter-spacing: -0.5px;
+    }
+    .header-controls {
+      display: flex;
+      gap: 16px;
+      padding: 0 83px 16px;
+    }
+    .select-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+    .select-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #576580;
+    }
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23576580' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E") no-repeat right 12px center;
+      border: 1.5px solid #cad3e5;
+      border-radius: 12px;
+      padding: 12px 36px 12px 12px;
+      font-size: 15px;
+      font-family: inherit;
+      color: #232f46;
+      cursor: pointer;
+      transition: border-color 0.12s;
+      width: 100%;
+    }
+    select:focus {
+      outline: none;
+      border-color: #232f46;
     }
 
     /* ── Error Banner ── */
@@ -66,100 +87,42 @@
       border: 1px solid #f5b5b5;
       color: #c0222a;
       font-size: 13px;
-      padding: 10px 32px;
+      padding: 10px 83px;
+      position: fixed;
+      top: var(--header-height, 120px);
+      left: 0;
+      right: 0;
+      z-index: 99;
     }
 
-    /* ── Two-column layout ── */
+    /* ── Body layout ── */
     .layout {
       display: flex;
-      flex: 1;
       align-items: flex-start;
-      padding: 32px;
-      gap: 24px;
-      min-height: 0;
-      max-width: 1280px;
+      max-width: 1440px;
       margin: 0 auto;
-      width: 100%;
+      padding: 32px 83px;
+      padding-top: calc(var(--header-height, 120px) + 32px);
+      gap: 26px;
+      min-height: 100vh;
     }
 
     /* ── Left column ── */
     .left-col {
       flex: 0 0 700px;
-      max-width: 700px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      overflow-y: auto;
-    }
-
-    /* ── Cards ── */
-    .card {
+      width: 700px;
+      background: #fff;
       border: 1.5px solid #cad3e5;
       border-radius: 12px;
-      padding: 24px;
-    }
-    .card-title {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #576580;
-      margin-bottom: 16px;
-    }
-
-    /* ── Radio groups ── */
-    .radio-row {
-      display: flex;
-      gap: 32px;
-      margin-bottom: 16px;
-    }
-    .radio-group {
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      flex: 1;
+      gap: 20px;
     }
-    .radio-group-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #576580;
-      margin-bottom: 4px;
-    }
-    .radio-option {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      user-select: none;
-      font-size: 14px;
+    .left-col-title {
+      font-size: 22px;
+      font-weight: 600;
       color: #232f46;
-      padding: 2px 0;
-    }
-    .radio-option input[type="radio"] {
-      display: none;
-    }
-    .radio-custom {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid #cad3e5;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: border-color 0.12s;
-    }
-    .radio-option input[type="radio"]:checked + .radio-custom {
-      border-color: #232f46;
-    }
-    .radio-option input[type="radio"]:checked + .radio-custom::after {
-      content: '';
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #232f46;
     }
 
     /* ── Asset upload zones ── */
@@ -167,7 +130,6 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
-      margin-bottom: 20px;
     }
     .upload-zone {
       background: #f0f2f5;
@@ -219,14 +181,14 @@
 
     /* ── Text fields ── */
     .field {
-      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
     .field-label {
       font-size: 13px;
       font-weight: 600;
       color: #232f46;
-      margin-bottom: 6px;
-      display: block;
     }
     input[type="text"],
     textarea {
@@ -253,30 +215,50 @@
       font-size: 12px;
       color: #576580;
       text-align: right;
-      margin-top: 4px;
     }
     .char-counter.over { color: #c0222a; }
+
+    /* ── Generate button ── */
+    .generate-row {
+      display: flex;
+      justify-content: flex-end;
+    }
+    .generate-btn {
+      padding: 12px 24px;
+      background: #232f46;
+      color: #fff;
+      border: none;
+      border-radius: 1000px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .generate-btn:hover { background: #2e3d5a; }
+    .generate-btn:disabled { background: #9aa3b2; cursor: not-allowed; }
 
     /* ── Right column ── */
     .right-col {
       flex: 1;
       position: sticky;
-      top: 32px;
-      height: calc(100vh - 100px);
+      top: calc(var(--header-height, 120px) + 32px);
     }
     .preview-panel {
-      background: #f0f2f5;
+      background: #fff;
+      border: 1.5px solid #cad3e5;
       border-radius: 12px;
       padding: 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 16px;
-      height: 100%;
+      min-height: 480px;
     }
     .preview-area {
       width: 100%;
       flex: 1;
+      min-height: 360px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -288,14 +270,16 @@
     .preview-placeholder {
       text-align: center;
       color: #576580;
-      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
       padding: 24px;
     }
-    .preview-placeholder-icon {
-      font-size: 36px;
-      display: block;
-      margin-bottom: 8px;
-      opacity: 0.5;
+    .preview-placeholder-text {
+      font-size: 32px;
+      font-weight: 700;
+      color: #232f46;
     }
     #preview-frame-img {
       display: none;
@@ -324,21 +308,6 @@
       height: 100%;
       object-fit: contain;
     }
-    .generate-btn {
-      width: 100%;
-      padding: 14px 24px;
-      background: #232f46;
-      color: #fff;
-      border: none;
-      border-radius: 1000px;
-      font-size: 15px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .generate-btn:hover { background: #2e3d5a; }
-    .generate-btn:disabled { background: #9aa3b2; cursor: not-allowed; }
     #status-msg {
       font-size: 13px;
       color: #576580;
@@ -363,16 +332,49 @@
 </head>
 <body>
 
-<!-- Header -->
-<header class="header">
-  <div class="header-inner">
-  <span class="header-logo">
-    <svg width="32" height="26" viewBox="0 0 48.616 38.76" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Fixed Header -->
+<header class="header" id="main-header">
+  <div class="header-top">
+    <svg width="28" height="22" viewBox="0 0 48.616 38.76" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M 15.580625514339303 5.509936432432843 L 15.580625514339303 0 L 8.450370368137799 0 L 8.450370368137799 10.00876278806452 L 0 15.342676073396351 L 3.7932958178372007 21.409337717055244 L 8.470742774618207 18.4578785803206 L 8.470742774618207 38.759690780048174 L 40.14537161812661 38.759690780048174 L 40.14537161812661 18.4578785803206 L 44.82281680892231 21.409337717055244 L 48.61611557006836 15.342676073396351 L 24.30805778503418 0 L 15.580625514339303 5.509936432432843 Z" fill="#1B8751"/>
     </svg>
     <span class="header-wordmark">Nextdoor</span>
-  </span>
-  <span class="header-title">Mock Maker</span>
+    <span class="header-title">Mock Maker</span>
+  </div>
+  <div class="header-controls">
+    <div class="select-group">
+      <label class="select-label" for="sel-device">Device</label>
+      <select id="sel-device">
+        <option value="web">Web (mobile)</option>
+        <option value="ios">iOS</option>
+        <option value="android">Android</option>
+        <option value="desktop">Desktop</option>
+      </select>
+    </div>
+    <div class="select-group">
+      <label class="select-label" for="sel-background">Background</label>
+      <select id="sel-background">
+        <option value="full_site">Full site</option>
+        <option value="skeleton">Skeleton</option>
+        <option value="format_only">Format only</option>
+      </select>
+    </div>
+    <div class="select-group">
+      <label class="select-label" for="sel-adformat">Ad Format</label>
+      <select id="sel-adformat">
+        <option value="newsfeed">Newsfeed</option>
+        <option value="carousel">Carousel</option>
+        <option value="personalized">Personalized</option>
+        <option value="lead_gen">Lead Gen</option>
+      </select>
+    </div>
+    <div class="select-group">
+      <label class="select-label" for="sel-crop">Crop</label>
+      <select id="sel-crop">
+        <option value="1_1">Square (1×1)</option>
+        <option value="16_9">Landscape (16×9)</option>
+      </select>
+    </div>
   </div>
 </header>
 
@@ -384,95 +386,62 @@
 
   <!-- Left column -->
   <div class="left-col">
+    <div class="left-col-title">Assets</div>
 
-    <!-- Card 1: Format -->
-    <div class="card">
-      <div class="card-title">Format</div>
-
-      <!-- Top row: Device, Background, Ad Format -->
-      <div class="radio-row">
-
-        <div class="radio-group">
-          <div class="radio-group-label">Device</div>
-          <label class="radio-option"><input type="radio" name="device" value="web" checked><span class="radio-custom"></span>Web (mobile)</label>
-          <label class="radio-option"><input type="radio" name="device" value="ios"><span class="radio-custom"></span>iOS</label>
-          <label class="radio-option"><input type="radio" name="device" value="android"><span class="radio-custom"></span>Android</label>
-          <label class="radio-option"><input type="radio" name="device" value="desktop"><span class="radio-custom"></span>Desktop</label>
+    <!-- Upload zones -->
+    <div class="upload-row">
+      <div class="upload-zone" id="logo-zone">
+        <input type="file" id="logo" name="logo" accept="image/*">
+        <div class="upload-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="5" width="18" height="14" rx="2" stroke="#576580" stroke-width="1.5"/>
+            <circle cx="8.5" cy="10.5" r="1.5" fill="#576580"/>
+            <path d="M3 16l4.5-4.5 3 3 3-3.5 4.5 5" stroke="#576580" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </div>
-
-        <div class="radio-group">
-          <div class="radio-group-label">Ad Format</div>
-          <label class="radio-option"><input type="radio" name="ad_format" value="newsfeed" checked><span class="radio-custom"></span>Newsfeed</label>
-          <label class="radio-option"><input type="radio" name="ad_format" value="carousel"><span class="radio-custom"></span>Carousel</label>
-          <label class="radio-option"><input type="radio" name="ad_format" value="personalized"><span class="radio-custom"></span>Personalized</label>
-          <label class="radio-option"><input type="radio" name="ad_format" value="lead_gen"><span class="radio-custom"></span>Lead Gen</label>
-        </div>
-
+        <div class="upload-label">Upload logo</div>
+        <div class="upload-hint">Max 50MB</div>
+        <div class="upload-filename" id="logo-filename"></div>
       </div>
-
-      <!-- Crop row -->
-      <div class="radio-row" style="margin-bottom:0">
-        <div class="radio-group">
-          <div class="radio-group-label">Crop</div>
-          <label class="radio-option"><input type="radio" name="crop" value="1_1" checked><span class="radio-custom"></span>Square (1:1)</label>
-          <label class="radio-option"><input type="radio" name="crop" value="16_9"><span class="radio-custom"></span>Landscape (16:9)</label>
+      <div class="upload-zone" id="media-zone">
+        <input type="file" id="media" name="media" accept="image/*,video/*" required>
+        <div class="upload-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 4v10m0-10l-3 3m3-3l3 3" stroke="#576580" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#576580" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
         </div>
-        <div class="radio-group"></div><!-- spacer -->
+        <div class="upload-label">Upload media</div>
+        <div class="upload-hint">Max 150MB</div>
+        <div class="upload-filename" id="media-filename"></div>
+        <div id="video-note" style="display:none;font-size:11px;color:#576580;margin-top:4px;">Video will render as GIF</div>
       </div>
     </div>
 
-    <!-- Card 2: Assets -->
-    <div class="card">
-      <div class="card-title">Assets</div>
+    <!-- Headline -->
+    <div class="field" id="headline-field">
+      <label class="field-label" for="headline">Headline</label>
+      <input type="text" id="headline" name="headline" placeholder="Write your headline…">
+      <div class="char-counter" id="headline-counter">0/70</div>
+    </div>
 
-      <!-- Upload zones -->
-      <div class="upload-row">
-        <div class="upload-zone" id="logo-zone">
-          <input type="file" id="logo" name="logo" accept="image/*">
-          <div class="upload-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="5" width="18" height="14" rx="2" stroke="#576580" stroke-width="1.5"/>
-              <circle cx="8.5" cy="10.5" r="1.5" fill="#576580"/>
-              <path d="M3 16l4.5-4.5 3 3 3-3.5 4.5 5" stroke="#576580" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <div class="upload-label">Upload logo</div>
-          <div class="upload-hint">Max 50MB</div>
-          <div class="upload-filename" id="logo-filename"></div>
-        </div>
-        <div class="upload-zone" id="media-zone">
-          <input type="file" id="media" name="media" accept="image/*,video/*" required>
-          <div class="upload-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 4v10m0-10l-3 3m3-3l3 3" stroke="#576580" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#576580" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="upload-label">Upload media</div>
-          <div class="upload-hint">Max 150MB</div>
-          <div class="upload-filename" id="media-filename"></div>
-          <div id="video-note" style="display:none;font-size:11px;color:#576580;margin-top:4px;">Video will render as GIF</div>
-        </div>
-      </div>
+    <!-- Description -->
+    <div class="field" id="body-field">
+      <label class="field-label" for="body">Description</label>
+      <textarea id="body" name="body" placeholder="Write your description…"></textarea>
+      <div class="char-counter" id="body-counter">0/1700</div>
+    </div>
 
-      <!-- Text fields -->
-      <div class="field" id="headline-field">
-        <label class="field-label" for="headline">Headline</label>
-        <input type="text" id="headline" name="headline" placeholder="Write your headline…">
-        <div class="char-counter" id="headline-counter">0/70</div>
-      </div>
+    <!-- CTA -->
+    <div class="field" id="cta-field">
+      <label class="field-label" for="cta">CTA text</label>
+      <input type="text" id="cta" name="cta" placeholder="e.g. Learn More">
+      <div class="char-counter" id="cta-counter">0/45</div>
+    </div>
 
-      <div class="field" id="body-field">
-        <label class="field-label" for="body">Description</label>
-        <textarea id="body" name="body" placeholder="Write your description…"></textarea>
-        <div class="char-counter" id="body-counter">0/1700</div>
-      </div>
-
-      <div class="field" id="cta-field" style="margin-bottom:0">
-        <label class="field-label" for="cta">CTA text</label>
-        <input type="text" id="cta" name="cta" placeholder="e.g. Learn More">
-        <div class="char-counter" id="cta-counter">0/45</div>
-      </div>
+    <!-- Generate button (right-aligned) -->
+    <div class="generate-row">
+      <button class="generate-btn" id="submit-btn" type="button">Generate</button>
     </div>
 
     <!-- Hidden video options (kept for /generate compat) -->
@@ -480,7 +449,6 @@
       <input type="hidden" id="fps" name="fps" value="15">
       <input type="hidden" id="duration" name="duration" value="5">
     </div>
-
   </div><!-- /left-col -->
 
   <!-- Right column -->
@@ -489,11 +457,8 @@
 
       <div class="preview-area" id="preview-area">
         <div class="preview-placeholder" id="preview-placeholder">
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.35;margin-bottom:10px">
-            <rect x="4" y="6" width="32" height="22" rx="3" stroke="#576580" stroke-width="2"/>
-            <path d="M14 34h12M20 28v6" stroke="#576580" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <div>Your mock will appear here</div>
+          <img src="/static/illustration.svg" width="216" height="144" alt="">
+          <div class="preview-placeholder-text">Your mock will appear here</div>
         </div>
         <img id="preview-frame-img" alt="Figma frame">
         <div id="preview-media-layer">
@@ -507,8 +472,6 @@
 
       <div id="status-msg"></div>
 
-      <button class="generate-btn" id="submit-btn" type="button">Generate</button>
-
       <div id="download-wrap">
         <a id="dl-link" href="#">↓ Download mockup</a>
       </div>
@@ -520,6 +483,14 @@
 
 <script>
   const FORMAT_SPECS = {{ format_specs | tojson }};
+
+  // ── Measure header height and set CSS var ──
+  function updateHeaderHeight() {
+    const h = document.getElementById('main-header').offsetHeight;
+    document.documentElement.style.setProperty('--header-height', h + 'px');
+  }
+  updateHeaderHeight();
+  window.addEventListener('resize', updateHeaderHeight);
 
   // ── State ──
   let currentFrameData = null; // { frame_url, component, media_region, logo_region }
@@ -533,19 +504,18 @@
   }
 
   function getFormatKey() {
-    const adFormat = document.querySelector('input[name="ad_format"]:checked')?.value;
-    const crop = document.querySelector('input[name="crop"]:checked')?.value;
-
+    const adFormat = document.getElementById('sel-adformat').value;
+    const crop = document.getElementById('sel-crop').value;
     if (adFormat === 'carousel') return 'carousel';
     if (adFormat === 'lead_gen') return 'lead_gen';
     if (adFormat === 'personalized') return 'spotlight';
-    // newsfeed: derive from detected media type + crop
-    if (getMediaType() === 'video') return `video_${crop}`;
+    const mediaType = getMediaType();
+    if (mediaType === 'video') return `video_${crop}`;
     return `image_${crop}`;
   }
 
   function getDevice() {
-    return document.querySelector('input[name="device"]:checked')?.value || 'web';
+    return document.getElementById('sel-device').value;
   }
 
   // ── Refresh preview on any format change ──
@@ -617,7 +587,6 @@
       vidEl.style.display = 'none';
     }
     positionMediaLayer();
-    // show video-options hidden inputs based on type
     document.getElementById('video-options').classList.toggle('hidden', !isVid);
   }
 
@@ -645,7 +614,6 @@
     const areaW = area.clientWidth;
     const areaH = area.clientHeight;
 
-    // Figure out the rendered dimensions of the frame img (object-fit: contain)
     const imgAspect = comp.width / comp.height;
     const areaAspect = areaW / areaH;
     let renderedW, renderedH, offsetX, offsetY;
@@ -736,7 +704,6 @@
         positionMediaLayer();
         positionLogoLayer();
       };
-      // If already cached/loaded
       if (frameImg.complete && frameImg.naturalWidth) {
         positionMediaLayer();
         positionLogoLayer();
@@ -746,9 +713,9 @@
     }
   }
 
-  // ── Wire up all radio changes ──
-  document.querySelectorAll('input[name="device"], input[name="ad_format"], input[name="media_type"], input[name="crop"]').forEach(el => {
-    el.addEventListener('change', updateFormatUI);
+  // ── Wire up all select changes ──
+  ['sel-device', 'sel-background', 'sel-adformat', 'sel-crop'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateFormatUI);
   });
 
   // ── Client-side GIF generation helpers ──
@@ -796,13 +763,9 @@
 
     const statusMsg = document.getElementById('status-msg');
 
-    // 1. Load the Figma frame image via our proxy
     const frameImg = await loadImage('/api/frame-image?device=' + encodeURIComponent(getDevice()) + '&format=' + encodeURIComponent(getFormatKey()));
-
-    // 2. Load logo if present
     const logoImg = logoFile ? await loadImage(URL.createObjectURL(logoFile)) : null;
 
-    // 3. Set up video element
     const video = document.createElement('video');
     video.src = URL.createObjectURL(mediaFile);
     video.muted = true;
@@ -813,7 +776,6 @@
     const totalFrames = Math.floor(duration * fps);
     const interval = 1 / fps;
 
-    // 4. Set up canvas
     const comp = variantConfig.component;
     const scale = outputWidth / comp.width;
     const outputHeight = Math.round(comp.height * scale);
@@ -823,13 +785,11 @@
     canvas.height = outputHeight;
     const ctx = canvas.getContext('2d');
 
-    // Pre-compute scaled regions
     const mr = variantConfig.media_region;
     const lr = variantConfig.logo_region;
     const smr = mr ? { x: mr.x * scale, y: mr.y * scale, w: mr.width * scale, h: mr.height * scale } : null;
     const slr = lr ? { x: lr.x * scale, y: lr.y * scale, w: lr.width * scale, h: lr.height * scale } : null;
 
-    // 5. Create GIF encoder
     const gif = new GIF({
       workers: 2,
       quality: 10,
@@ -842,31 +802,29 @@
       statusMsg.textContent = `Encoding GIF… ${Math.round(p * 100)}%`;
     });
 
-    // 6. Capture frames
     for (let i = 0; i < totalFrames; i++) {
       statusMsg.textContent = `Capturing frames… ${i + 1}/${totalFrames}`;
       const t = i * interval;
       await seekVideo(video, t);
 
-      ctx.clearRect(0, 0, outputWidth, outputHeight);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, outputWidth, outputHeight);
 
-      // Draw media cropped to region
-      if (smr) {
-        drawCropped(ctx, video, smr.x, smr.y, smr.w, smr.h);
-      }
+      if (smr) drawCropped(ctx, video, smr.x, smr.y, smr.w, smr.h);
 
-      // Draw Figma frame chrome on top
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, outputWidth, outputHeight);
+      if (smr) ctx.rect(smr.x, smr.y, smr.w, smr.h);
+      ctx.clip('evenodd');
       ctx.drawImage(frameImg, 0, 0, outputWidth, outputHeight);
+      ctx.restore();
 
-      // Draw logo
-      if (logoImg && slr) {
-        ctx.drawImage(logoImg, slr.x, slr.y, slr.w, slr.h);
-      }
+      if (logoImg && slr) ctx.drawImage(logoImg, slr.x, slr.y, slr.w, slr.h);
 
       gif.addFrame(ctx, { copy: true, delay: Math.round(1000 / fps) });
     }
 
-    // 7. Render and return blob URL
     return new Promise((resolve, reject) => {
       gif.on('finished', blob => {
         resolve(URL.createObjectURL(blob));
@@ -897,7 +855,6 @@
 
     try {
       if (mediaFile.type.startsWith('video/')) {
-        // Client-side GIF generation
         statusMsg.textContent = 'Capturing frames… this may take a moment.';
         const gifUrl = await generateGifClientSide(
           mediaFile,
@@ -910,7 +867,6 @@
         dlLink.textContent = 'Download mockup.gif';
         dlWrap.style.display = 'block';
       } else {
-        // Server-side PNG generation (images unchanged)
         const formData = new FormData();
         formData.append('device', getDevice());
         formData.append('format', getFormatKey());
