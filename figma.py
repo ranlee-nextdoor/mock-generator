@@ -4,64 +4,33 @@ import os
 import requests
 
 FIGMA_TOKEN = os.environ.get("FIGMA_TOKEN")
-FIGMA_FILE_KEY = os.environ.get("FIGMA_FILE_KEY", "WRPoyXiU5wyxxTOYt9WZsF")
+FIGMA_FILE_KEY = os.environ.get("FIGMA_FILE_KEY", "racGTQJtcB6f7fZlH1NyVL")
 BASE_URL = "https://api.figma.com/v1"
 
 HEADERS = {"X-Figma-Token": FIGMA_TOKEN} if FIGMA_TOKEN else {}
 
-# Maps format_key → the Figma component "Format" variant name
-FORMAT_TO_FIGMA_VARIANT = {
-    "image_16_9":   "image",
-    "image_1_1":    "image",
-    "video_16_9":   "image",
-    "video_1_1":    "image",
-    "video_9_16":   "image",
-    "lead_gen":     "lead_gen",
-    "for_sale_free":"image",
-    "carousel":     "carousel",
-    "spotlight":    "spotlight",
-    "right_hand_rail": "image",
+# Format frames from the new Mock Maker 2026 file — transparent media regions.
+# All formats are device-agnostic (device context handled separately).
+# logo_region is None — logo placeholder is transparent, composited by client.
+FORMAT_FRAMES = {
+    "image_1_1":    {"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
+    "image_16_9":   {"node_id": "10003:2873", "component": {"width": 365, "height": 419}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 195}, "logo_region": None},
+    "video_1_1":    {"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
+    "video_16_9":   {"node_id": "10003:2873", "component": {"width": 365, "height": 419}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 195}, "logo_region": None},
+    "video_9_16":   {"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
+    "spotlight":    {"node_id": "10001:9828", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
+    "carousel":     {"node_id": "10001:9836", "component": {"width": 375, "height": 506}, "media_region": {"x": 0, "y": 172, "width": 375, "height": 334}, "logo_region": None},
+    "lead_gen":     {"node_id": "10001:10120","component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
+    "for_sale_free":{"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
+    "right_hand_rail":{"node_id":"10001:9797","component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
 }
 
-# Specific "Unfilled" variant node IDs per device per format variant.
-# Regions are at 1x (Figma canvas units); compositing scales to match export size.
+# Device labels for the UI dropdown
 COMPONENT_MAP = {
-    "web": {
-        "label": "Web (Mobile)",
-        "variants": {
-            "image":    {"node_id": "9473:33326", "component": {"width": 365, "height": 589}, "media_region": {"x": 0,  "y": 172, "width": 365, "height": 365}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-            "carousel": {"node_id": "9473:33680", "component": {"width": 375, "height": 506}, "media_region": {"x": 16, "y": 172, "width": 266, "height": 266}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-            "spotlight":{"node_id": "9473:33637", "component": {"width": 365, "height": 365}, "media_region": {"x": 0,  "y": 0,   "width": 365, "height": 365}, "logo_region": {"x": 310, "y": 308, "width": 40, "height": 40}},
-            "lead_gen": {"node_id": "9509:144999","component": {"width": 365, "height": 589}, "media_region": {"x": 0,  "y": 172, "width": 365, "height": 365}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-        },
-    },
-    "ios": {
-        "label": "iOS",
-        "variants": {
-            "image":    {"node_id": "9582:268806", "component": {"width": 393, "height": 617}, "media_region": {"x": 0, "y": 172, "width": 393, "height": 393}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-            "carousel": {"node_id": "9582:268928", "component": {"width": 393, "height": 506}, "media_region": {"x": 16, "y": 172, "width": 266, "height": 266}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-            "spotlight":{"node_id": "9582:268866", "component": {"width": 393, "height": 393}, "media_region": {"x": 0, "y": 0, "width": 393, "height": 393}, "logo_region": {"x": 335, "y": 335, "width": 40, "height": 40}},
-            "lead_gen": {"node_id": "9582:269080", "component": {"width": 393, "height": 617}, "media_region": {"x": 0, "y": 172, "width": 393, "height": 393}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-        },
-    },
-    "android": {
-        "label": "Android",
-        "variants": {
-            "image":    {"node_id": "10040:113947", "component": {"width": 393, "height": 617}, "media_region": {"x": 0, "y": 172, "width": 393, "height": 393}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-            "carousel": {"node_id": "10040:113983", "component": {"width": 393, "height": 506}, "media_region": {"x": 16, "y": 172, "width": 266, "height": 266}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-            "spotlight":{"node_id": "10040:113971", "component": {"width": 393, "height": 393}, "media_region": {"x": 0, "y": 0, "width": 393, "height": 393}, "logo_region": {"x": 335, "y": 335, "width": 40, "height": 40}},
-            "lead_gen": {"node_id": "10040:114135", "component": {"width": 393, "height": 617}, "media_region": {"x": 0, "y": 172, "width": 393, "height": 393}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-        },
-    },
-    "desktop": {
-        "label": "Desktop",
-        "variants": {
-            "image":    {"node_id": "9518:198768", "component": {"width": 580, "height": 804}, "media_region": {"x": 0, "y": 172, "width": 580, "height": 580}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-            "carousel": {"node_id": "9518:198890", "component": {"width": 580, "height": 700}, "media_region": {"x": 16, "y": 172, "width": 400, "height": 400}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-            "spotlight":{"node_id": "9518:198828", "component": {"width": 580, "height": 580}, "media_region": {"x": 0, "y": 0, "width": 580, "height": 580}, "logo_region": {"x": 500, "y": 498, "width": 40, "height": 40}},
-            "lead_gen": {"node_id": "9556:240772", "component": {"width": 580, "height": 804}, "media_region": {"x": 0, "y": 172, "width": 580, "height": 580}, "logo_region": {"x": 16, "y": 16, "width": 40, "height": 40}},
-        },
-    },
+    "web":     {"label": "Web (mobile)"},
+    "ios":     {"label": "iOS"},
+    "android": {"label": "Android"},
+    "desktop": {"label": "Desktop"},
 }
 
 # Format specs derived from the ad specs sheet
@@ -193,12 +162,8 @@ FORMAT_SPECS = {
 
 
 def get_variant_config(device_key: str, format_key: str) -> dict | None:
-    """Return the node ID + region config for the right device+format variant."""
-    device = COMPONENT_MAP.get(device_key)
-    if not device:
-        return None
-    figma_variant = FORMAT_TO_FIGMA_VARIANT.get(format_key, "image")
-    return device["variants"].get(figma_variant)
+    """Return the node ID + region config for the given format (device-agnostic)."""
+    return FORMAT_FRAMES.get(format_key)
 
 
 def get_component_export_url(node_id: str, scale: float = 2.0) -> str | None:
@@ -232,6 +197,9 @@ def export_component_png(node_id: str, scale: float = 2.0) -> bytes | None:
 
 def get_available_devices() -> dict:
     return {k: v["label"] for k, v in COMPONENT_MAP.items()}
+
+def get_available_formats() -> dict:
+    return {k: FORMAT_SPECS[k]["label"] for k in FORMAT_FRAMES if k in FORMAT_SPECS}
 
 
 def get_available_formats() -> dict:

@@ -55,11 +55,11 @@
       flex: 1;
     }
     .select-label {
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #576580;
+      letter-spacing: 0.08em;
+      color: #232f46;
     }
     select {
       appearance: none;
@@ -245,10 +245,6 @@
       top: calc(var(--header-height, 120px) + 32px);
     }
     .preview-panel {
-      background: #fff;
-      border: 1.5px solid #cad3e5;
-      border-radius: 12px;
-      padding: 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -258,14 +254,13 @@
     .preview-area {
       width: 100%;
       flex: 1;
-      min-height: 360px;
+      min-height: 480px;
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
-      background: #e4e7ed;
     }
     .preview-placeholder {
       text-align: center;
@@ -346,7 +341,7 @@
       <label class="select-label" for="sel-device">Device</label>
       <select id="sel-device">
         <option value="web">Web (mobile)</option>
-        <option value="ios">iOS</option>
+        <option value="ios" selected>iOS</option>
         <option value="android">Android</option>
         <option value="desktop">Desktop</option>
       </select>
@@ -389,6 +384,13 @@
     <div class="left-col-title">Assets</div>
 
     <!-- Upload zones -->
+    <!-- Advertiser -->
+    <div class="field">
+      <label class="field-label" for="advertiser">Advertiser name</label>
+      <input type="text" id="advertiser" name="advertiser" placeholder="e.g. Green Thumb Landscaping" maxlength="70">
+      <div class="char-counter" id="advertiser-counter">0/70</div>
+    </div>
+
     <div class="upload-row">
       <div class="upload-zone" id="logo-zone">
         <input type="file" id="logo" name="logo" accept="image/*">
@@ -453,30 +455,25 @@
 
   <!-- Right column -->
   <div class="right-col">
-    <div class="preview-panel">
 
-      <div class="preview-area" id="preview-area">
-        <div class="preview-placeholder" id="preview-placeholder">
-          <img src="/static/illustration.svg" width="216" height="144" alt="">
-          <div class="preview-placeholder-text">Your mock will appear here</div>
-        </div>
-        <img id="preview-frame-img" alt="Figma frame">
-        <div id="preview-media-layer">
-          <img id="preview-media-img" alt="Media preview" style="display:none">
-          <video id="preview-media-video" autoplay loop muted playsinline style="display:none"></video>
-        </div>
-        <div id="preview-logo-layer">
-          <img id="preview-logo-img" alt="Logo preview">
-        </div>
+    <div class="preview-area" id="preview-area">
+      <div class="preview-placeholder" id="preview-placeholder">
+        <img src="/static/illustration.svg" width="216" height="144" alt="">
+        <div class="preview-placeholder-text">Your mock will appear here</div>
       </div>
-
-      <div id="status-msg"></div>
-
-      <div id="download-wrap">
-        <a id="dl-link" href="#">↓ Download mockup</a>
+      <img id="preview-frame-img" alt="Figma frame">
+      <div id="preview-media-layer">
+        <img id="preview-media-img" alt="Media preview" style="display:none">
+        <video id="preview-media-video" autoplay loop muted playsinline style="display:none"></video>
       </div>
-
+      <div id="preview-logo-layer">
+        <img id="preview-logo-img" alt="Logo preview">
+      </div>
     </div>
+
+    <div id="status-msg"></div>
+    <div id="download-wrap"><a id="dl-link" href="#">↓ Download mockup</a></div>
+
   </div><!-- /right-col -->
 
 </div><!-- /layout -->
@@ -518,13 +515,14 @@
     return document.getElementById('sel-device').value;
   }
 
-  // ── Refresh preview on any format change ──
+  // ── Refresh preview on format change — only if media is already selected ──
   function updateFormatUI() {
-    triggerPreviewRefresh();
+    const mediaFile = document.getElementById('media').files[0];
+    if (mediaFile) triggerPreviewRefresh();
   }
 
   // ── Char counters ──
-  const LIMITS = { headline: 70, body: 1700, cta: 45 };
+  const LIMITS = { advertiser: 70, headline: 70, body: 1700, cta: 45 };
   function updateCounter(field) {
     const input = document.getElementById(field);
     const counter = document.getElementById(`${field}-counter`);
@@ -534,7 +532,7 @@
     counter.classList.toggle('over', len > max);
   }
 
-  ['headline', 'body', 'cta'].forEach(f => {
+  ['advertiser', 'headline', 'body', 'cta'].forEach(f => {
     document.getElementById(f).addEventListener('input', () => updateCounter(f));
   });
 
@@ -556,6 +554,7 @@
         onMediaChange();
         document.getElementById('video-note').style.display =
           (input.files[0]?.type.startsWith('video/')) ? '' : 'none';
+        triggerPreviewRefresh(); // fetch frame now that we know media type
       }
       if (inputId === 'logo') onLogoChange();
     });
@@ -696,9 +695,11 @@
 
       const frameImg = document.getElementById('preview-frame-img');
       const placeholder = document.getElementById('preview-placeholder');
+      const area = document.getElementById('preview-area');
       frameImg.src = data.frame_url;
       frameImg.style.display = '';
       placeholder.style.display = 'none';
+      area.classList.add('has-frame');
 
       frameImg.onload = () => {
         positionMediaLayer();
@@ -909,7 +910,7 @@
 
   // ── Init ──
   updateFormatUI();
-  fetchFrame();
+  // Don't auto-fetch frame — only load when media is selected
 </script>
 </body>
 </html>
