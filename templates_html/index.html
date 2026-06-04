@@ -619,76 +619,50 @@
   }
 
   // ── Position overlay layers based on currentFrameData ──
+  function getFrameLayout() {
+    const frameImg = document.getElementById('preview-frame-img');
+    if (!frameImg.naturalWidth) return null;
+    const rect = frameImg.getBoundingClientRect();
+    const areaRect = document.getElementById('preview-area').getBoundingClientRect();
+    return {
+      renderedW: rect.width,
+      renderedH: rect.height,
+      offsetX: rect.left - areaRect.left,
+      offsetY: rect.top - areaRect.top,
+      scaleX: rect.width / currentFrameData.component.width,
+      scaleY: rect.height / currentFrameData.component.height,
+    };
+  }
+
   function positionMediaLayer() {
     if (!currentFrameData?.media_region) return;
-    const area = document.getElementById('preview-area');
     const frameImg = document.getElementById('preview-frame-img');
     if (frameImg.style.display === 'none' || !frameImg.naturalWidth) return;
-
-    const comp = currentFrameData.component;
+    const layout = getFrameLayout();
+    if (!layout) return;
     const mr = currentFrameData.media_region;
-    const areaW = area.clientWidth;
-    const areaH = area.clientHeight;
-
-    const imgAspect = comp.width / comp.height;
-    const areaAspect = areaW / areaH;
-    let renderedW, renderedH, offsetX, offsetY;
-    if (imgAspect > areaAspect) {
-      renderedW = areaW;
-      renderedH = areaW / imgAspect;
-      offsetX = 0;
-      offsetY = (areaH - renderedH) / 2;
-    } else {
-      renderedH = areaH;
-      renderedW = areaH * imgAspect;
-      offsetY = 0;
-      offsetX = (areaW - renderedW) / 2;
-    }
-    const scaleX = renderedW / comp.width;
-    const scaleY = renderedH / comp.height;
-
     const layer = document.getElementById('preview-media-layer');
-    layer.style.display = '';
-    layer.style.left   = `${offsetX + mr.x * scaleX}px`;
-    layer.style.top    = `${offsetY + mr.y * scaleY}px`;
-    layer.style.width  = `${mr.width * scaleX}px`;
-    layer.style.height = `${mr.height * scaleY}px`;
+    layer.style.display = 'block';
+    layer.style.left   = `${layout.offsetX + mr.x * layout.scaleX}px`;
+    layer.style.top    = `${layout.offsetY + mr.y * layout.scaleY}px`;
+    layer.style.width  = `${mr.width * layout.scaleX}px`;
+    layer.style.height = `${mr.height * layout.scaleY}px`;
   }
 
   function positionLogoLayer() {
     if (!currentFrameData?.logo_region) return;
-    const area = document.getElementById('preview-area');
     const frameImg = document.getElementById('preview-frame-img');
     if (frameImg.style.display === 'none' || !frameImg.naturalWidth) return;
-
-    const comp = currentFrameData.component;
+    const layout = getFrameLayout();
+    if (!layout) return;
     const lr = currentFrameData.logo_region;
-    const areaW = area.clientWidth;
-    const areaH = area.clientHeight;
-
-    const imgAspect = comp.width / comp.height;
-    const areaAspect = areaW / areaH;
-    let renderedW, renderedH, offsetX, offsetY;
-    if (imgAspect > areaAspect) {
-      renderedW = areaW;
-      renderedH = areaW / imgAspect;
-      offsetX = 0;
-      offsetY = (areaH - renderedH) / 2;
-    } else {
-      renderedH = areaH;
-      renderedW = areaH * imgAspect;
-      offsetY = 0;
-      offsetX = (areaW - renderedW) / 2;
-    }
-    const scaleX = renderedW / comp.width;
-    const scaleY = renderedH / comp.height;
+    const scaleX = layout.scaleX;
+    const scaleY = layout.scaleY;
 
     const logoLayer = document.getElementById('preview-logo-layer');
-    if (logoObjectURL) {
-      logoLayer.style.display = '';
-    }
-    logoLayer.style.left   = `${offsetX + lr.x * scaleX}px`;
-    logoLayer.style.top    = `${offsetY + lr.y * scaleY}px`;
+    if (logoObjectURL) logoLayer.style.display = 'block';
+    logoLayer.style.left   = `${layout.offsetX + lr.x * scaleX}px`;
+    logoLayer.style.top    = `${layout.offsetY + lr.y * scaleY}px`;
     logoLayer.style.width  = `${lr.width * scaleX}px`;
     logoLayer.style.height = `${lr.height * scaleY}px`;
   }
