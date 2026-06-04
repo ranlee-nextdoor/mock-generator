@@ -719,24 +719,33 @@
       const fontSize = `${layer.size * layout.scaleX}px`;
 
       if (layer.seeMore) {
-        el.className = 'preview-text-item see-more-wrap';
-        el.style.cssText = `left:${left};top:${top};width:${width};font-size:${fontSize};font-weight:${layer.weight};`;
-        const inner = document.createElement('span');
-        inner.className = 'inner';
-        inner.textContent = val + ' ';
-        const sm = document.createElement('span');
-        sm.className = 'see-more-label';
-        sm.textContent = 'See more';
-        inner.appendChild(sm);
-        el.appendChild(inner);
+        el.className = 'preview-text-item';
+        el.style.cssText = `left:${left};top:${top};width:${width};font-size:${fontSize};font-weight:${layer.weight};overflow:hidden;`;
+        // Temporarily add to DOM to measure line height
+        container.appendChild(el);
+        const lineH = parseFloat(fontSize) * 1.25;
+        const maxH = lineH * 2;
+        el.textContent = val;
+        // If text overflows 2 lines, truncate and append "See more"
+        if (el.scrollHeight > maxH + 2) {
+          const words = val.split(' ');
+          let truncated = '';
+          const suffix = '… See more';
+          for (let i = 0; i < words.length; i++) {
+            const test = (truncated ? truncated + ' ' : '') + words[i];
+            el.textContent = test + suffix;
+            if (el.scrollHeight > maxH + 2) break;
+            truncated = test;
+          }
+          el.innerHTML = truncated + ' <span style="font-weight:620">See more</span>';
+        }
+        el.style.maxHeight = maxH + 'px';
       } else {
         el.className = `preview-text-item${layer.clamp ? ' clamp-' + layer.clamp : ''}`;
-        // advertiser: no ellipsis, just hard clip
-        if (layer.clamp === 1 && layer.field === 'advertiser') el.style.textOverflow = 'clip';
-        el.style.cssText += `left:${left};top:${top};width:${width};font-size:${fontSize};font-weight:${layer.weight};`;
+        el.style.cssText = `left:${left};top:${top};width:${width};font-size:${fontSize};font-weight:${layer.weight};`;
         el.textContent = val;
+        container.appendChild(el);
       }
-      container.appendChild(el);
     }
   }
 
