@@ -178,7 +178,8 @@ def build_frame(
         logo = logo_img.convert("RGBA").resize((r["width"], r["height"]), Image.LANCZOS)
         result.alpha_composite(logo, (r["x"], r["y"]))
 
-    final = result.convert("RGB")
+    # Keep RGBA — preserves transparent rounded corners for PNG output
+    final = result  # stays RGBA
 
     # Resize to 400px wide first
     target_w = 400
@@ -191,7 +192,7 @@ def build_frame(
         text_scale = final.width / variant_config["component"]["width"]
         final = draw_text_layers(final, texts, text_scale)
 
-    return final
+    return final  # RGBA — callers convert to RGB for GIF, save as-is for PNG
 
 
 @app.route("/static/<path:filename>")
@@ -338,7 +339,7 @@ def generate():
             composited = []
             for f in frames:
                 frame = build_frame(f, mockup, logo_img, variant_config, texts) if mockup and variant_config else f.convert("RGB")
-                composited.append(frame)
+                composited.append(frame.convert("RGB"))  # GIF needs RGB
                 del f  # free raw frame immediately
             out_path = str(OUTPUT_DIR / f"{output_filename}.gif")
             save_gif(composited, out_path, fps)
@@ -350,10 +351,11 @@ def generate():
             if mockup_bytes and variant_config:
                 mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA")
                 result = build_frame(media_img, mockup, logo_img, variant_config, texts)
+                # Keep RGBA for PNG — transparent rounded corners
             else:
-                result = media_img.convert("RGB")
+                result = media_img.convert("RGBA")
             out_path = str(OUTPUT_DIR / f"{output_filename}.png")
-            result.save(out_path)
+            result.save(out_path, format="PNG")
             download_name = "mockup.png"
 
         else:

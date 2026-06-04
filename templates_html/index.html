@@ -8,8 +8,14 @@
   <style>
     @font-face {
       font-family: 'Saans';
-      src: url('/static/SaansVFUprights.woff2') format('woff2');
-      font-weight: 100 900;
+      src: url('/static/Saans-Regular.woff2') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Saans';
+      src: url('/static/Saans-SemiBold.woff2') format('woff2');
+      font-weight: 600;
       font-style: normal;
     }
   </style>
@@ -333,6 +339,16 @@
     #dl-link:hover { text-decoration: underline; }
 
     .hidden { display: none !important; }
+
+    .preview-text-item {
+      position: absolute;
+      font-family: 'Saans', system-ui, sans-serif;
+      color: #232f46;
+      line-height: 1.25;
+      white-space: pre-wrap;
+      word-break: break-word;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -478,6 +494,7 @@
       <div id="preview-logo-layer">
         <img id="preview-logo-img" alt="Logo preview">
       </div>
+      <div id="preview-text-layer" style="position:absolute;top:0;left:0;pointer-events:none;"></div>
     </div>
 
     <div id="status-msg"></div>
@@ -667,6 +684,40 @@
     logoLayer.style.height = `${lr.height * scaleY}px`;
   }
 
+  // ── Text overlay in preview ──
+  const PREVIEW_TEXT_LAYERS = [
+    { field: 'advertiser', x: 64,  y: 17,  width: 280, size: 14, weight: '400' },
+    { field: 'headline',   x: 16,  y: 80,  width: 333, size: 16, weight: '600' },
+    { field: 'body',       x: 16,  y: 120, width: 333, size: 16, weight: '400' },
+    { field: 'cta',        x: 16,  y: 554, width: 298, size: 14, weight: '400' },
+  ];
+
+  function positionTextLayer() {
+    const container = document.getElementById('preview-text-layer');
+    if (!container || !currentFrameData) return;
+    const layout = getFrameLayout();
+    if (!layout) return;
+    container.innerHTML = '';
+    for (const layer of PREVIEW_TEXT_LAYERS) {
+      const val = (document.getElementById(layer.field === 'body' ? 'body' : layer.field)?.value || '').trim();
+      if (!val) continue;
+      const el = document.createElement('div');
+      el.className = 'preview-text-item';
+      el.style.left = `${layout.offsetX + layer.x * layout.scaleX}px`;
+      el.style.top  = `${layout.offsetY + layer.y * layout.scaleY}px`;
+      el.style.width = `${layer.width * layout.scaleX}px`;
+      el.style.fontSize = `${layer.size * layout.scaleX}px`;
+      el.style.fontWeight = layer.weight;
+      el.textContent = val;
+      container.appendChild(el);
+    }
+  }
+
+  // Re-render text on any input change
+  ['advertiser','headline','body','cta'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', positionTextLayer);
+  });
+
   // ── Fetch frame from /api/frame ──
   let fetchDebounceTimer = null;
   function triggerPreviewRefresh() {
@@ -694,6 +745,7 @@
         area.classList.add('has-frame');
         positionMediaLayer();
         positionLogoLayer();
+        positionTextLayer();
       };
       frameImg.src = data.frame_url;
       if (frameImg.complete && frameImg.naturalWidth) {
@@ -892,20 +944,6 @@
   // ── Generate / Regenerate button label ──
   let hasGenerated = false;
 
-  function markEdited() {
-    if (hasGenerated) {
-      document.getElementById('submit-btn').textContent = 'Regenerate';
-    }
-  }
-
-  // Watch all inputs and selects for changes
-  ['advertiser','headline','body','cta','logo','media'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', markEdited);
-    document.getElementById(id)?.addEventListener('change', markEdited);
-  });
-  ['sel-device','sel-background','sel-adformat','sel-crop'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', markEdited);
-  });
 
   // ── Generate button ──
   document.getElementById('submit-btn').addEventListener('click', async () => {
@@ -936,7 +974,7 @@
         );
         statusMsg.textContent = 'Done!';
         hasGenerated = true;
-        btn.textContent = 'Generate';
+        btn.textContent = 'Regenerate';
         dlLink.href = gifUrl;
         dlLink.download = generateFilename('gif');
         dlLink.textContent = '↓ Download ' + dlLink.download;
@@ -964,7 +1002,7 @@
         } else {
           statusMsg.textContent = 'Done!';
         hasGenerated = true;
-        btn.textContent = 'Generate';
+        btn.textContent = 'Regenerate';
           const ext = json.download_name.split('.').pop();
           dlLink.href = json.download_url;
           dlLink.download = generateFilename(ext);
