@@ -346,9 +346,19 @@
       font-family: 'Saans', system-ui, sans-serif;
       color: #232f46;
       line-height: 1.25;
-      white-space: pre-wrap;
       word-break: break-word;
       pointer-events: none;
+      overflow: hidden;
+    }
+    .preview-text-item.clamp-1 {
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+    }
+    .preview-text-item.clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
     }
   </style>
 </head>
@@ -450,21 +460,18 @@
     <div class="field" id="headline-field">
       <label class="field-label" for="headline">Headline</label>
       <input type="text" id="headline" name="headline" placeholder="Write your headline…">
-      <div class="char-counter" id="headline-counter">0/70</div>
     </div>
 
     <!-- Description -->
     <div class="field" id="body-field">
       <label class="field-label" for="body">Description</label>
       <textarea id="body" name="body" placeholder="Write your description…"></textarea>
-      <div class="char-counter" id="body-counter">0/1700</div>
     </div>
 
     <!-- CTA -->
     <div class="field" id="cta-field">
       <label class="field-label" for="cta">CTA text</label>
       <input type="text" id="cta" name="cta" placeholder="e.g. Learn More">
-      <div class="char-counter" id="cta-counter">0/45</div>
     </div>
 
     <!-- Generate button (right-aligned) -->
@@ -557,19 +564,6 @@
   }
 
   // ── Char counters ──
-  const LIMITS = { headline: 70, body: 1700, cta: 45 };
-  function updateCounter(field) {
-    const input = document.getElementById(field);
-    const counter = document.getElementById(`${field}-counter`);
-    const max = LIMITS[field];
-    const len = input.value.length;
-    counter.textContent = `${len}/${max}`;
-    counter.classList.toggle('over', len > max);
-  }
-
-  ['headline', 'body', 'cta'].forEach(f => {
-    document.getElementById(f).addEventListener('input', () => updateCounter(f));
-  });
 
   // ── Upload zone feedback ──
   function wireUploadZone(inputId, zoneId, filenameId) {
@@ -687,10 +681,10 @@
 
   // ── Text overlay in preview ──
   const PREVIEW_TEXT_LAYERS = [
-    { field: 'advertiser', x: 64,  y: 17,  width: 280, size: 14, weight: '620' },
-    { field: 'headline',   x: 16,  y: 80,  width: 333, size: 16, weight: '620' },
-    { field: 'body',       x: 16,  y: 120, width: 333, size: 16, weight: '420' },
-    { field: 'cta',        x: 16,  y: 554, width: 298, size: 14, weight: '620' },
+    { field: 'advertiser', x: 64,  y: 17,  width: 280, size: 14, weight: '620', clamp: 1 },
+    { field: 'headline',   x: 16,  y: 80,  width: 333, size: 16, weight: '620', clamp: 2 },
+    { field: 'body',       x: 16,  y: 120, width: 333, size: 16, weight: '420', clamp: 2, seeMore: true },
+    { field: 'cta',        x: 16,  y: 554, width: 298, size: 14, weight: '620', clamp: 1 },
   ];
 
   function positionTextLayer() {
@@ -703,13 +697,13 @@
       const val = (document.getElementById(layer.field === 'body' ? 'body' : layer.field)?.value || '').trim();
       if (!val) continue;
       const el = document.createElement('div');
-      el.className = 'preview-text-item';
+      el.className = `preview-text-item${layer.clamp ? ' clamp-' + layer.clamp : ''}`;
       el.style.left = `${layout.offsetX + layer.x * layout.scaleX}px`;
       el.style.top  = `${layout.offsetY + layer.y * layout.scaleY}px`;
       el.style.width = `${layer.width * layout.scaleX}px`;
       el.style.fontSize = `${layer.size * layout.scaleX}px`;
       el.style.fontWeight = layer.weight;
-      el.textContent = val;
+      el.textContent = layer.seeMore ? val + ' See more' : val;
       container.appendChild(el);
     }
   }

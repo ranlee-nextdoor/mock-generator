@@ -78,10 +78,10 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 # Text layer positions at 1x (from Figma), for Newsfeed 1x1 frame (365px wide)
 TEXT_LAYERS = {
-    "advertiser": {"x": 64,  "y": 17,  "width": 280, "size": 14, "weight": "SemiBold", "color": (35, 47, 70)},
-    "headline":   {"x": 16,  "y": 80,  "width": 333, "size": 16, "weight": "SemiBold", "color": (35, 47, 70)},
-    "body":       {"x": 16,  "y": 120, "width": 333, "size": 16, "weight": "Regular",  "color": (35, 47, 70)},
-    "cta":        {"x": 16,  "y": 554, "width": 298, "size": 14, "weight": "SemiBold", "color": (35, 47, 70)},
+    "advertiser": {"x": 64,  "y": 17,  "width": 280, "size": 14, "weight": "SemiBold", "color": (35, 47, 70), "max_lines": 1},
+    "headline":   {"x": 16,  "y": 80,  "width": 333, "size": 16, "weight": "SemiBold", "color": (35, 47, 70), "max_lines": 2},
+    "body":       {"x": 16,  "y": 120, "width": 333, "size": 16, "weight": "Regular",  "color": (35, 47, 70), "max_lines": 2, "see_more": True},
+    "cta":        {"x": 16,  "y": 554, "width": 298, "size": 14, "weight": "SemiBold", "color": (35, 47, 70), "max_lines": 1},
 }
 
 def get_font(size_px: float, weight: str = "Regular"):
@@ -133,6 +133,18 @@ def draw_text_layers(result: Image.Image, texts: dict, scale: float) -> Image.Im
         color = layer["color"]
 
         lines = wrap_text(text, font, max_w, draw)
+        max_lines = layer.get("max_lines")
+        see_more = layer.get("see_more", False)
+        if max_lines:
+            if len(lines) > max_lines:
+                lines = lines[:max_lines]
+                if see_more:
+                    # Append "See more" to last line, truncating if needed
+                    last = lines[-1]
+                    suffix = " See more"
+                    while last and draw.textbbox((0,0), last + suffix, font=font)[2] > max_w:
+                        last = last[:-1]
+                    lines[-1] = last + suffix
         for line in lines:
             draw.text((x, y), line, font=font, fill=color)
             y += int(line_h)
@@ -318,16 +330,7 @@ def generate():
     if not media_file:
         return jsonify({"error": "No media file uploaded"}), 400
 
-    # Validate character limits
-    errors = []
-    if spec["headline_limit"] and len(headline) > spec["headline_limit"]:
-        errors.append(f"Headline exceeds {spec['headline_limit']} characters")
-    if spec["body_limit"] and body and len(body) > spec["body_limit"]:
-        errors.append(f"Body exceeds {spec['body_limit']} characters")
-    if spec["cta_limit"] and cta and len(cta) > spec["cta_limit"]:
-        errors.append(f"CTA exceeds {spec['cta_limit']} characters")
-    if errors:
-        return jsonify({"error": "; ".join(errors)}), 400
+    # Text is truncated at render time — no hard character limit errors
 
     # Get the specific Figma variant for this device + format combo (export at 1x to save memory)
     variant_config = figma_api.get_variant_config(device_key, format_key)
