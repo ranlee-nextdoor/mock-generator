@@ -178,7 +178,13 @@ def build_frame(
         logo = logo_img.convert("RGBA").resize((r["width"], r["height"]), Image.LANCZOS)
         result.alpha_composite(logo, (r["x"], r["y"]))
 
-    # Keep RGBA — preserves transparent rounded corners for PNG output
+    # Apply the original frame's alpha channel as a mask so rounded corners stay transparent
+    frame_alpha = mockup.split()[3] if mockup.mode == 'RGBA' else None
+    if frame_alpha:
+        # Resize alpha mask to match result if needed
+        if frame_alpha.size != result.size:
+            frame_alpha = frame_alpha.resize(result.size, Image.LANCZOS)
+        result.putalpha(frame_alpha)
     final = result  # stays RGBA
 
     # Resize to 400px wide first
