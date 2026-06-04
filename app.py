@@ -141,10 +141,10 @@ def draw_text_layers(result: Image.Image, texts: dict, scale: float) -> Image.Im
                 if see_more:
                     # Append "See more" to last line, truncating if needed
                     last = lines[-1]
-                    suffix = " See more"
+                    suffix = "… see more"
                     while last and draw.textbbox((0,0), last + suffix, font=font)[2] > max_w:
                         last = last[:-1]
-                    lines[-1] = last + suffix
+                    lines[-1] = last + "… see more"
         for line in lines:
             draw.text((x, y), line, font=font, fill=color)
             y += int(line_h)
