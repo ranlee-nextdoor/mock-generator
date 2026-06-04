@@ -78,10 +78,10 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 # Text layer positions at 1x (from Figma), for Newsfeed 1x1 frame (365px wide)
 TEXT_LAYERS = {
-    "advertiser": {"x": 64,  "y": 17,  "width": 280, "size": 14, "weight": "Regular",  "color": (35, 47, 70)},
+    "advertiser": {"x": 64,  "y": 17,  "width": 280, "size": 14, "weight": "SemiBold", "color": (35, 47, 70)},
     "headline":   {"x": 16,  "y": 80,  "width": 333, "size": 16, "weight": "SemiBold", "color": (35, 47, 70)},
     "body":       {"x": 16,  "y": 120, "width": 333, "size": 16, "weight": "Regular",  "color": (35, 47, 70)},
-    "cta":        {"x": 16,  "y": 554, "width": 298, "size": 14, "weight": "Regular",  "color": (35, 47, 70)},
+    "cta":        {"x": 16,  "y": 554, "width": 298, "size": 14, "weight": "SemiBold", "color": (35, 47, 70)},
 }
 
 def get_font(size_px: float, weight: str = "Regular"):
