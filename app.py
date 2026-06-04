@@ -176,14 +176,17 @@ def build_frame(
 
     final = result.convert("RGB")
 
-    # Render text layers
-    if texts:
-        final = draw_text_layers(final, texts, export_scale)
-    # Resize output to 400px wide to reduce file size and memory
+    # Resize to 400px wide first
     target_w = 400
     if final.width > target_w:
-        scale = target_w / final.width
-        final = final.resize((target_w, int(final.height * scale)), Image.LANCZOS)
+        rs = target_w / final.width
+        final = final.resize((target_w, int(final.height * rs)), Image.LANCZOS)
+
+    # Draw text at correct scale relative to 1x Figma canvas
+    if texts:
+        text_scale = final.width / variant_config["component"]["width"]
+        final = draw_text_layers(final, texts, text_scale)
+
     return final
 
 
