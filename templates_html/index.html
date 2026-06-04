@@ -650,15 +650,14 @@
   function getFrameLayout() {
     const frameImg = document.getElementById('preview-frame-img');
     if (!frameImg.naturalWidth) return null;
-    const rect = frameImg.getBoundingClientRect();
-    const areaRect = document.getElementById('preview-area').getBoundingClientRect();
+    // Use offsetLeft/Top which are relative to the offsetParent (preview-area)
     return {
-      renderedW: rect.width,
-      renderedH: rect.height,
-      offsetX: rect.left - areaRect.left,
-      offsetY: rect.top - areaRect.top,
-      scaleX: rect.width / currentFrameData.component.width,
-      scaleY: rect.height / currentFrameData.component.height,
+      renderedW: frameImg.offsetWidth,
+      renderedH: frameImg.offsetHeight,
+      offsetX: frameImg.offsetLeft,
+      offsetY: frameImg.offsetTop,
+      scaleX: frameImg.offsetWidth / currentFrameData.component.width,
+      scaleY: frameImg.offsetHeight / currentFrameData.component.height,
     };
   }
 
@@ -708,22 +707,29 @@
     if (!container || !currentFrameData) return;
     const layout = getFrameLayout();
     if (!layout) return;
+    // Size the container to exactly cover the frame image
+    container.style.left   = layout.offsetX + 'px';
+    container.style.top    = layout.offsetY + 'px';
+    container.style.width  = layout.renderedW + 'px';
+    container.style.height = layout.renderedH + 'px';
     container.innerHTML = '';
+    const sx = layout.scaleX;
     for (const layer of PREVIEW_TEXT_LAYERS) {
       const val = (document.getElementById(layer.field === 'body' ? 'body' : layer.field)?.value || '').trim();
       if (!val) continue;
       const el = document.createElement('div');
-      const left = `${layout.offsetX + layer.x * layout.scaleX}px`;
-      const top  = `${layout.offsetY + layer.y * layout.scaleY}px`;
-      const width = `${layer.width * layout.scaleX}px`;
-      const fontSize = `${layer.size * layout.scaleX}px`;
+      // Positions are now relative to the container (= frame image), no offsetX/Y needed
+      const left = `${layer.x * sx}px`;
+      const top  = `${layer.y * sx}px`;
+      const width = `${layer.width * sx}px`;
+      const fontSize = `${layer.size * sx}px`;
 
       if (layer.seeMore) {
         el.className = 'preview-text-item';
         el.style.cssText = `left:${left};top:${top};width:${width};font-size:${fontSize};font-weight:${layer.weight};overflow:hidden;`;
         // Temporarily add to DOM to measure line height
         container.appendChild(el);
-        const lineH = parseFloat(fontSize) * 1.25;
+        const lineH = layer.size * sx * 1.25;
         const maxH = lineH * 2;
         el.textContent = val;
         // If text overflows 2 lines, truncate and append "See more"
@@ -804,10 +810,10 @@
   // ── Client-side GIF generation helpers ──
   // Text layer definitions (1x Figma coordinates, Newsfeed 1x1 frame 365px wide)
   const TEXT_LAYERS = {
-    advertiser: { x: 64,  y: 17,  width: 280, size: 14, weight: '620', color: '#232f46' },
-    headline:   { x: 16,  y: 80,  width: 333, size: 16, weight: '620', color: '#232f46' },
-    body:       { x: 16,  y: 120, width: 333, size: 16, weight: '420', color: '#232f46' },
-    cta:        { x: 16,  y: 554, width: 298, size: 14, weight: '620', color: '#232f46' },
+    advertiser: { x: 64,  y: 17,  width: 210, size: 14, weight: '620', color: '#232f46', maxLines: 1 },
+    headline:   { x: 16,  y: 80,  width: 333, size: 16, weight: '620', color: '#232f46', maxLines: 2 },
+    body:       { x: 16,  y: 120, width: 333, size: 16, weight: '420', color: '#232f46', maxLines: 2, seeMore: true },
+    cta:        { x: 16,  y: 554, width: 298, size: 14, weight: '620', color: '#232f46', maxLines: 1 },
   };
   const LINE_HEIGHT_RATIO = 18.4 / 14.73;
 
@@ -844,7 +850,17 @@
       ctx.fillStyle = layer.color;
       ctx.textBaseline = 'top';
       const maxW = layer.width * scale;
-      const lines = wrapText(ctx, text, maxW);
+      let lines = wrapText(ctx, text, maxW);
+      if (layer.maxLines && lines.length > layer.maxLines) {
+        lines = lines.slice(0, layer.maxLines);
+        if (layer.seeMore) {
+          // Truncate last line to fit "… see more"
+          const suffix = '… see more';
+          let last = lines[lines.length - 1];
+          while (last && ctx.measureText(last + suffix).width > maxW) last = last.slice(0, -1);
+          lines[lines.length - 1] = last + suffix;
+        }
+      }
       let y = layer.y * scale;
       for (const line of lines) {
         ctx.fillText(line, layer.x * scale, y);
