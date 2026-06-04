@@ -318,7 +318,8 @@
     #preview-logo-layer img {
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: cover;
+      border-radius: 50%;
     }
     #status-msg {
       font-size: 13px;
@@ -359,6 +360,21 @@
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
+    }
+    .preview-text-item.see-more-wrap {
+      display: block;
+      position: relative;
+    }
+    .preview-text-item.see-more-wrap .inner {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .preview-text-item.see-more-wrap .see-more-label {
+      display: inline;
+      color: #232f46;
+      font-weight: 620;
     }
   </style>
 </head>
@@ -681,7 +697,7 @@
 
   // ── Text overlay in preview ──
   const PREVIEW_TEXT_LAYERS = [
-    { field: 'advertiser', x: 64,  y: 17,  width: 280, size: 14, weight: '620', clamp: 1 },
+    { field: 'advertiser', x: 64,  y: 17,  width: 210, size: 14, weight: '620', clamp: 1 },
     { field: 'headline',   x: 16,  y: 80,  width: 333, size: 16, weight: '620', clamp: 2 },
     { field: 'body',       x: 16,  y: 120, width: 333, size: 16, weight: '420', clamp: 2, seeMore: true },
     { field: 'cta',        x: 16,  y: 554, width: 298, size: 14, weight: '620', clamp: 1 },
@@ -697,13 +713,29 @@
       const val = (document.getElementById(layer.field === 'body' ? 'body' : layer.field)?.value || '').trim();
       if (!val) continue;
       const el = document.createElement('div');
-      el.className = `preview-text-item${layer.clamp ? ' clamp-' + layer.clamp : ''}`;
-      el.style.left = `${layout.offsetX + layer.x * layout.scaleX}px`;
-      el.style.top  = `${layout.offsetY + layer.y * layout.scaleY}px`;
-      el.style.width = `${layer.width * layout.scaleX}px`;
-      el.style.fontSize = `${layer.size * layout.scaleX}px`;
-      el.style.fontWeight = layer.weight;
-      el.textContent = layer.seeMore ? val + ' See more' : val;
+      const left = `${layout.offsetX + layer.x * layout.scaleX}px`;
+      const top  = `${layout.offsetY + layer.y * layout.scaleY}px`;
+      const width = `${layer.width * layout.scaleX}px`;
+      const fontSize = `${layer.size * layout.scaleX}px`;
+
+      if (layer.seeMore) {
+        el.className = 'preview-text-item see-more-wrap';
+        el.style.cssText = `left:${left};top:${top};width:${width};font-size:${fontSize};font-weight:${layer.weight};`;
+        const inner = document.createElement('span');
+        inner.className = 'inner';
+        inner.textContent = val + ' ';
+        const sm = document.createElement('span');
+        sm.className = 'see-more-label';
+        sm.textContent = 'See more';
+        inner.appendChild(sm);
+        el.appendChild(inner);
+      } else {
+        el.className = `preview-text-item${layer.clamp ? ' clamp-' + layer.clamp : ''}`;
+        // advertiser: no ellipsis, just hard clip
+        if (layer.clamp === 1 && layer.field === 'advertiser') el.style.textOverflow = 'clip';
+        el.style.cssText += `left:${left};top:${top};width:${width};font-size:${fontSize};font-weight:${layer.weight};`;
+        el.textContent = val;
+      }
       container.appendChild(el);
     }
   }

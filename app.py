@@ -78,7 +78,7 @@ STATIC_DIR = Path(__file__).parent / "static"
 
 # Text layer positions at 1x (from Figma), for Newsfeed 1x1 frame (365px wide)
 TEXT_LAYERS = {
-    "advertiser": {"x": 64,  "y": 17,  "width": 280, "size": 14, "weight": "SemiBold", "color": (35, 47, 70), "max_lines": 1},
+    "advertiser": {"x": 64,  "y": 17,  "width": 210, "size": 14, "weight": "SemiBold", "color": (35, 47, 70), "max_lines": 1},
     "headline":   {"x": 16,  "y": 80,  "width": 333, "size": 16, "weight": "SemiBold", "color": (35, 47, 70), "max_lines": 2},
     "body":       {"x": 16,  "y": 120, "width": 333, "size": 16, "weight": "Regular",  "color": (35, 47, 70), "max_lines": 2, "see_more": True},
     "cta":        {"x": 16,  "y": 554, "width": 298, "size": 14, "weight": "SemiBold", "color": (35, 47, 70), "max_lines": 1},
@@ -187,7 +187,13 @@ def build_frame(
 
     if logo_img and logo_region:
         r = scale_region(logo_region, export_scale)
-        logo = logo_img.convert("RGBA").resize((r["width"], r["height"]), Image.LANCZOS)
+        size = (r["width"], r["height"])
+        # Center-crop logo to square, then apply circular mask
+        logo = center_crop_to_square(logo_img).resize(size, Image.LANCZOS).convert("RGBA")
+        circle_mask = Image.new("L", size, 0)
+        from PIL import ImageDraw as _D
+        _D.Draw(circle_mask).ellipse([0, 0, size[0]-1, size[1]-1], fill=255)
+        logo.putalpha(circle_mask)
         result.alpha_composite(logo, (r["x"], r["y"]))
 
     # Apply a rounded rectangle mask to get transparent corners
