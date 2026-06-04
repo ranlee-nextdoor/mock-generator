@@ -534,8 +534,9 @@
   const FORMAT_SPECS = {{ format_specs | tojson }};
 
   function generateFilename(ext) {
-    const advertiser = (document.getElementById('advertiser')?.value || 'mockup')
-      .trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'mockup';
+    const raw = (document.getElementById('advertiser')?.value || 'mockup').trim();
+    const advertiser = raw.split(/\s+/).slice(0, 3).join('_')
+      .toLowerCase().replace(/[^a-z0-9_]+/g, '') || 'mockup';
     const now = new Date();
     const date = now.toISOString().slice(0,10).replace(/-/g,'');
     const time = now.toTimeString().slice(0,8).replace(/:/g,'');
@@ -908,6 +909,44 @@
     ctx.drawImage(source, sx, sy, sWidth, sHeight, dx, dy, dw, dh);
   }
 
+  // Device frame specs (at 1x Figma canvas units)
+  const DEVICE_FRAMES = {
+    ios:     { file: '/static/device_ios.png',     frameW: 438, frameH: 906, screenX: 12, screenY: 68, screenW: 414, screenH: 790 },
+    android: { file: '/static/device_android.png', frameW: 430, frameH: 943, screenX: 7,  screenY: 50, screenW: 416, screenH: 841 },
+    web:     { file: '/static/device_mobile.png',  frameW: 407, frameH: 812, screenX: 0,  screenY: 0,  screenW: 407, screenH: 812 },
+    desktop: { file: null }, // no device frame for desktop
+  };
+
+  async function wrapInDeviceFrame(adCanvas, device) {
+    const df = DEVICE_FRAMES[device];
+    if (!df || !df.file) return adCanvas; // no frame, return ad as-is
+
+    const deviceImg = await loadImage(df.file);
+    // Scale device frame so screen width fits adCanvas width
+    const deviceScale = adCanvas.width / df.screenW;
+    const deviceW = Math.round(df.frameW * deviceScale);
+    const deviceH = Math.round(df.frameH * deviceScale);
+    const sx = Math.round(df.screenX * deviceScale);
+    const sy = Math.round(df.screenY * deviceScale);
+    const sw = adCanvas.width;
+    const sh = Math.round(df.screenH * deviceScale);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = deviceW;
+    canvas.height = deviceH;
+    const ctx = canvas.getContext('2d');
+
+    // Draw device frame background
+    ctx.drawImage(deviceImg, 0, 0, deviceW, deviceH);
+    // Draw ad into screen area (center-crop vertically if ad is taller than screen)
+    const adH = Math.min(adCanvas.height, sh);
+    ctx.drawImage(adCanvas, 0, 0, sw, adH, sx, sy, sw, adH);
+    // Draw device chrome on top
+    ctx.drawImage(deviceImg, 0, 0, deviceW, deviceH);
+
+    return canvas;
+  }
+
   async function generateImageClientSide(mediaFile, logoFile, variantConfig) {
     const outputWidth = 400;
     const comp = variantConfig.component;
@@ -970,7 +1009,9 @@
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
 
-    return new Promise(resolve => canvas.toBlob(blob => resolve(URL.createObjectURL(blob)), 'image/png'));
+    // Wrap in device frame if applicable
+    const finalCanvas = await wrapInDeviceFrame(canvas, getDevice());
+    return new Promise(resolve => finalCanvas.toBlob(blob => resolve(URL.createObjectURL(blob)), 'image/png'));
   }
 
   async function generateGifClientSide(mediaFile, logoFile, variantConfig) {
@@ -1013,11 +1054,19 @@
     const smr = mr ? { x: mr.x * scale, y: mr.y * scale, w: mr.width * scale, h: mr.height * scale } : null;
     const slr = lr ? { x: lr.x * scale, y: lr.y * scale, w: lr.width * scale, h: lr.height * scale } : null;
 
+    // Calculate final output size (with device frame if applicable)
+    const df = DEVICE_FRAMES[getDevice()];
+    const deviceScale = df?.file ? outputWidth / df.screenW : 1;
+    const gifW = df?.file ? Math.round(df.frameW * deviceScale) : outputWidth;
+    const gifH = df?.file ? Math.round(df.frameH * deviceScale) : outputHeight;
+    // Preload device image if needed
+    const deviceFrameImg = df?.file ? await loadImage(df.file) : null;
+
     const gif = new GIF({
       workers: 2,
       quality: 10,
-      width: outputWidth,
-      height: outputHeight,
+      width: gifW,
+      height: gifH,
       workerScript: '/static/gif.worker.js',
     });
 
@@ -1046,9 +1095,31 @@
       ctx.drawImage(frameImg, 0, 0, outputWidth, outputHeight);
       ctx.restore();
 
-      if (logoImg && slr) ctx.drawImage(logoImg, slr.x, slr.y, slr.w, slr.h);
+      if (logoImg && slr) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(slr.x + slr.w/2, slr.y + slr.h/2, slr.w/2, 0, Math.PI*2);
+        ctx.clip();
+        drawCropped(ctx, logoImg, slr.x, slr.y, slr.w, slr.h);
+        ctx.restore();
+      }
 
-      gif.addFrame(ctx, { copy: true, delay: Math.round(1000 / fps) });
+      if (deviceFrameImg) {
+        // Wrap ad canvas into device frame for this GIF frame
+        const frameCtx = document.createElement('canvas');
+        frameCtx.width = gifW;
+        frameCtx.height = gifH;
+        const fctx = frameCtx.getContext('2d');
+        const sx = Math.round(df.screenX * deviceScale);
+        const sy = Math.round(df.screenY * deviceScale);
+        const adH = Math.min(outputHeight, Math.round(df.screenH * deviceScale));
+        fctx.drawImage(deviceFrameImg, 0, 0, gifW, gifH);
+        fctx.drawImage(canvas, 0, 0, outputWidth, adH, sx, sy, outputWidth, adH);
+        fctx.drawImage(deviceFrameImg, 0, 0, gifW, gifH);
+        gif.addFrame(fctx, { copy: true, delay: Math.round(1000 / fps) });
+      } else {
+        gif.addFrame(ctx, { copy: true, delay: Math.round(1000 / fps) });
+      }
     }
 
     return new Promise((resolve, reject) => {
