@@ -487,6 +487,15 @@
 <script>
   const FORMAT_SPECS = {{ format_specs | tojson }};
 
+  function generateFilename(ext) {
+    const advertiser = (document.getElementById('advertiser')?.value || 'mockup')
+      .trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'mockup';
+    const now = new Date();
+    const date = now.toISOString().slice(0,10).replace(/-/g,'');
+    const time = now.toTimeString().slice(0,8).replace(/:/g,'');
+    return `${advertiser}_${date}_${time}.${ext}`;
+  }
+
   // ── Measure header height and set CSS var ──
   function updateHeaderHeight() {
     const h = document.getElementById('main-header').offsetHeight;
@@ -521,10 +530,9 @@
     return document.getElementById('sel-device').value;
   }
 
-  // ── Refresh preview on format change — only if media is already selected ──
+  // ── Refresh preview whenever format changes ──
   function updateFormatUI() {
-    const mediaFile = document.getElementById('media').files[0];
-    if (mediaFile) triggerPreviewRefresh();
+    triggerPreviewRefresh();
   }
 
   // ── Char counters ──
@@ -930,8 +938,8 @@
         );
         statusMsg.textContent = 'Done!';
         dlLink.href = gifUrl;
-        dlLink.download = 'mockup.gif';
-        dlLink.textContent = 'Download mockup.gif';
+        dlLink.download = generateFilename('gif');
+        dlLink.textContent = '↓ Download ' + dlLink.download;
         dlWrap.style.display = 'block';
       } else {
         const formData = new FormData();
@@ -955,9 +963,10 @@
           statusMsg.textContent = '';
         } else {
           statusMsg.textContent = 'Done!';
+          const ext = json.download_name.split('.').pop();
           dlLink.href = json.download_url;
-          dlLink.download = json.download_name;
-          dlLink.textContent = `Download ${json.download_name}`;
+          dlLink.download = generateFilename(ext);
+          dlLink.textContent = '↓ Download ' + dlLink.download;
           dlWrap.style.display = 'block';
         }
       }
@@ -977,7 +986,7 @@
 
   // ── Init ──
   updateFormatUI();
-  // Don't auto-fetch frame — only load when media is selected
+  fetchFrame();
 </script>
 </body>
 </html>

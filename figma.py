@@ -12,17 +12,19 @@ HEADERS = {"X-Figma-Token": FIGMA_TOKEN} if FIGMA_TOKEN else {}
 # Format frames from the new Mock Maker 2026 file — transparent media regions.
 # All formats are device-agnostic (device context handled separately).
 # logo_region is None — logo placeholder is transparent, composited by client.
+_LOGO = {"x": 16, "y": 16, "width": 40, "height": 40}
+
 FORMAT_FRAMES = {
-    "image_1_1":    {"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
-    "image_16_9":   {"node_id": "10003:2873", "component": {"width": 365, "height": 419}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 195}, "logo_region": None},
-    "video_1_1":    {"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
-    "video_16_9":   {"node_id": "10003:2873", "component": {"width": 365, "height": 419}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 195}, "logo_region": None},
-    "video_9_16":   {"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
-    "spotlight":    {"node_id": "10001:9828", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
-    "carousel":     {"node_id": "10001:9836", "component": {"width": 375, "height": 506}, "media_region": {"x": 0, "y": 172, "width": 375, "height": 334}, "logo_region": None},
-    "lead_gen":     {"node_id": "10001:10120","component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
-    "for_sale_free":{"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
-    "right_hand_rail":{"node_id":"10001:9797","component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": None},
+    "image_1_1":    {"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": _LOGO},
+    "image_16_9":   {"node_id": "10003:2873", "component": {"width": 365, "height": 419}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 195}, "logo_region": _LOGO},
+    "video_1_1":    {"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": _LOGO},
+    "video_16_9":   {"node_id": "10003:2873", "component": {"width": 365, "height": 419}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 195}, "logo_region": _LOGO},
+    "video_9_16":   {"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": _LOGO},
+    "spotlight":    {"node_id": "10001:9828", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": _LOGO},
+    "carousel":     {"node_id": "10001:9836", "component": {"width": 375, "height": 506}, "media_region": {"x": 0, "y": 172, "width": 375, "height": 334}, "logo_region": _LOGO},
+    "lead_gen":     {"node_id": "10001:10120","component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": _LOGO},
+    "for_sale_free":{"node_id": "10001:9797", "component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": _LOGO},
+    "right_hand_rail":{"node_id":"10001:9797","component": {"width": 365, "height": 589}, "media_region": {"x": 0, "y": 172, "width": 365, "height": 365}, "logo_region": _LOGO},
 }
 
 # Device labels for the UI dropdown
