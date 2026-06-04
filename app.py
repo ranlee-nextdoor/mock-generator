@@ -178,13 +178,17 @@ def build_frame(
         logo = logo_img.convert("RGBA").resize((r["width"], r["height"]), Image.LANCZOS)
         result.alpha_composite(logo, (r["x"], r["y"]))
 
-    # Apply the original frame's alpha channel as a mask so rounded corners stay transparent
-    frame_alpha = mockup.split()[3] if mockup.mode == 'RGBA' else None
-    if frame_alpha:
-        # Resize alpha mask to match result if needed
-        if frame_alpha.size != result.size:
-            frame_alpha = frame_alpha.resize(result.size, Image.LANCZOS)
-        result.putalpha(frame_alpha)
+    # Apply a rounded rectangle mask to get transparent corners
+    # Corner radius is ~12px at 1x Figma canvas, scaled to export size
+    corner_radius = int(12 * export_scale)
+    from PIL import ImageDraw as _ID
+    mask = Image.new('L', result.size, 0)
+    _ID.Draw(mask).rounded_rectangle(
+        [0, 0, result.width - 1, result.height - 1],
+        radius=corner_radius,
+        fill=255
+    )
+    result.putalpha(mask)
     final = result  # stays RGBA
 
     # Resize to 400px wide first
@@ -357,9 +361,13 @@ def generate():
             if mockup_bytes and variant_config:
                 mockup = Image.open(io.BytesIO(mockup_bytes)).convert("RGBA")
                 result = build_frame(media_img, mockup, logo_img, variant_config, texts)
-                # Keep RGBA for PNG — transparent rounded corners
             else:
                 result = media_img.convert("RGBA")
+            # Composite onto white so PNG has a visible background
+            bg = Image.new("RGB", result.size, (255, 255, 255))
+            if result.mode == "RGBA":
+                bg.paste(result, mask=result.split()[3])
+                result = bg
             out_path = str(OUTPUT_DIR / f"{output_filename}.png")
             result.save(out_path, format="PNG")
             download_name = "mockup.png"
