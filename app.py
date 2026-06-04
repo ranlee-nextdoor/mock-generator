@@ -85,13 +85,17 @@ TEXT_LAYERS = {
 }
 
 def get_font(size_px: float, weight: str = "Regular"):
-    """Load Saans TTF at the given size. Falls back to default if unavailable."""
+    """Load the correct Saans static instance at the given size."""
+    from PIL import ImageFont
+    fname = "Saans-SemiBold.ttf" if weight == "SemiBold" else "Saans-Regular.ttf"
+    path = STATIC_DIR / fname
     try:
-        from PIL import ImageFont
-        return ImageFont.truetype(str(FONT_PATH), int(size_px))
+        return ImageFont.truetype(str(path), int(size_px))
     except Exception:
-        from PIL import ImageFont
-        return ImageFont.load_default()
+        try:
+            return ImageFont.truetype(str(FONT_PATH), int(size_px))
+        except Exception:
+            return ImageFont.load_default()
 
 def wrap_text(text: str, font, max_width: int, draw) -> list[str]:
     """Wrap text to fit within max_width pixels."""

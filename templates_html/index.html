@@ -715,7 +715,7 @@
       const area = document.getElementById('preview-area');
       frameImg.style.display = 'none'; // hide until loaded
       frameImg.onload = () => {
-        frameImg.style.display = '';
+        frameImg.style.display = 'block';
         placeholder.style.display = 'none';
         area.classList.add('has-frame');
         positionMediaLayer();
@@ -723,7 +723,7 @@
       };
       frameImg.src = data.frame_url;
       if (frameImg.complete && frameImg.naturalWidth) {
-        frameImg.style.display = '';
+        frameImg.style.display = 'block';
         placeholder.style.display = 'none';
         area.classList.add('has-frame');
         positionMediaLayer();
