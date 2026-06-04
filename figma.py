@@ -163,6 +163,20 @@ FORMAT_SPECS = {
 }
 
 
+FRAME_CACHE = {
+    "image_1_1":       "frame_newsfeed_1x1.png",
+    "video_1_1":       "frame_newsfeed_1x1.png",
+    "video_9_16":      "frame_newsfeed_1x1.png",
+    "image_16_9":      "frame_newsfeed_16x9.png",
+    "video_16_9":      "frame_newsfeed_16x9.png",
+    "spotlight":       "frame_personalized_1x1.png",
+    "carousel":        "frame_carousel.png",
+    "lead_gen":        "frame_lead_gen.png",
+    "for_sale_free":   "frame_newsfeed_1x1.png",
+    "right_hand_rail": "frame_newsfeed_1x1.png",
+}
+
+
 def get_variant_config(device_key: str, format_key: str) -> dict | None:
     """Return the node ID + region config for the given format (device-agnostic)."""
     return FORMAT_FRAMES.get(format_key)

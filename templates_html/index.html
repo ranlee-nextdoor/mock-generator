@@ -915,6 +915,24 @@
     });
   }
 
+  // ── Generate / Regenerate button label ──
+  let hasGenerated = false;
+
+  function markEdited() {
+    if (hasGenerated) {
+      document.getElementById('submit-btn').textContent = 'Regenerate';
+    }
+  }
+
+  // Watch all inputs and selects for changes
+  ['advertiser','headline','body','cta','logo','media'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', markEdited);
+    document.getElementById(id)?.addEventListener('change', markEdited);
+  });
+  ['sel-device','sel-background','sel-adformat','sel-crop'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', markEdited);
+  });
+
   // ── Generate button ──
   document.getElementById('submit-btn').addEventListener('click', async () => {
     const btn = document.getElementById('submit-btn');
@@ -943,6 +961,8 @@
           currentFrameData
         );
         statusMsg.textContent = 'Done!';
+        hasGenerated = true;
+        btn.textContent = 'Generate';
         dlLink.href = gifUrl;
         dlLink.download = generateFilename('gif');
         dlLink.textContent = '↓ Download ' + dlLink.download;
@@ -969,6 +989,8 @@
           statusMsg.textContent = '';
         } else {
           statusMsg.textContent = 'Done!';
+        hasGenerated = true;
+        btn.textContent = 'Generate';
           const ext = json.download_name.split('.').pop();
           dlLink.href = json.download_url;
           dlLink.download = generateFilename(ext);

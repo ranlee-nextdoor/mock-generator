@@ -250,7 +250,13 @@ def frame_image():
         return "Not found", 404
     png_bytes = figma_api.export_component_png(variant["node_id"])
     if not png_bytes:
-        return "Failed to fetch from Figma", 502
+        cached = figma_api.FRAME_CACHE.get(format_key)
+        if cached:
+            cache_path = Path(__file__).parent / "static" / cached
+            if cache_path.exists():
+                png_bytes = cache_path.read_bytes()
+    if not png_bytes:
+        return "Failed to fetch frame", 502
 
     if punch and variant.get("media_region"):
         # Punch the media region transparent so client-side canvas can draw video through it
@@ -264,7 +270,7 @@ def frame_image():
         mockup.save(buf, format="PNG")
         png_bytes = buf.getvalue()
 
-    return png_bytes, 200, {"Content-Type": "image/png", "Cache-Control": "public, max-age=300"}
+    return png_bytes, 200, {"Content-Type": "image/png", "Cache-Control": "public, max-age=3600"}
 
 
 @app.route("/api/format-spec/<format_key>")
