@@ -890,6 +890,71 @@
     ctx.drawImage(source, sx, sy, sWidth, sHeight, dx, dy, dw, dh);
   }
 
+  async function generateImageClientSide(mediaFile, logoFile, variantConfig) {
+    const outputWidth = 400;
+    const comp = variantConfig.component;
+    const scale = outputWidth / comp.width;
+    const outputHeight = Math.round(comp.height * scale);
+
+    await Promise.all([
+      document.fonts.load(`420 16px 'Saans'`),
+      document.fonts.load(`620 16px 'Saans'`),
+    ]);
+
+    const frameImg = await loadImage('/api/frame-image?device=' + encodeURIComponent(getDevice()) + '&format=' + encodeURIComponent(getFormatKey()));
+    const logoImg = logoFile ? await loadImage(URL.createObjectURL(logoFile)) : null;
+    const mediaImg = await loadImage(URL.createObjectURL(mediaFile));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = outputWidth;
+    canvas.height = outputHeight;
+    const ctx = canvas.getContext('2d');
+
+    const mr = variantConfig.media_region;
+    const lr = variantConfig.logo_region;
+    const smr = mr ? { x: mr.x*scale, y: mr.y*scale, w: mr.width*scale, h: mr.height*scale } : null;
+    const slr = lr ? { x: lr.x*scale, y: lr.y*scale, w: lr.width*scale, h: lr.height*scale } : null;
+
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, outputWidth, outputHeight);
+
+    // Media
+    if (smr) drawCropped(ctx, mediaImg, smr.x, smr.y, smr.w, smr.h);
+
+    // Text
+    drawTextLayers(ctx, scale, comp.width);
+
+    // Chrome (evenodd clip excludes media region)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, outputWidth, outputHeight);
+    if (smr) ctx.rect(smr.x, smr.y, smr.w, smr.h);
+    ctx.clip('evenodd');
+    ctx.drawImage(frameImg, 0, 0, outputWidth, outputHeight);
+    ctx.restore();
+
+    // Logo (circle clip)
+    if (logoImg && slr) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(slr.x + slr.w/2, slr.y + slr.h/2, slr.w/2, 0, Math.PI*2);
+      ctx.clip();
+      drawCropped(ctx, logoImg, slr.x, slr.y, slr.w, slr.h);
+      ctx.restore();
+    }
+
+    // Rounded corners mask
+    const r = 12 * scale;
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.beginPath();
+    ctx.roundRect(0, 0, outputWidth, outputHeight, r);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+
+    return new Promise(resolve => canvas.toBlob(blob => resolve(URL.createObjectURL(blob)), 'image/png'));
+  }
+
   async function generateGifClientSide(mediaFile, logoFile, variantConfig) {
     const fps = 10;
     const maxDuration = 4;
@@ -1016,35 +1081,20 @@
         dlLink.textContent = '↓ Download ' + dlLink.download;
         dlWrap.style.display = 'block';
       } else {
-        const formData = new FormData();
-        formData.append('device', getDevice());
-        formData.append('format', getFormatKey());
-        formData.append('advertiser', document.getElementById('advertiser').value);
-        formData.append('headline', document.getElementById('headline').value);
-        formData.append('body', document.getElementById('body').value);
-        formData.append('cta', document.getElementById('cta').value);
-        formData.append('fps', document.getElementById('fps').value || '10');
-        formData.append('duration', document.getElementById('duration').value || '4');
-        formData.append('media', mediaFile);
-        const logoFile = document.getElementById('logo').files[0];
-        if (logoFile) formData.append('logo', logoFile);
-
-        const res = await fetch('/generate', { method: 'POST', body: formData });
-        const json = await res.json();
-
-        if (json.error) {
-          showError(json.error);
-          statusMsg.textContent = '';
-        } else {
-          statusMsg.textContent = 'Done!';
+        // Image: generate client-side for exact preview match
+        statusMsg.textContent = 'Generating…';
+        const pngUrl = await generateImageClientSide(
+          mediaFile,
+          document.getElementById('logo').files[0] || null,
+          currentFrameData
+        );
+        statusMsg.textContent = 'Done!';
         hasGenerated = true;
         btn.textContent = 'Regenerate';
-          const ext = json.download_name.split('.').pop();
-          dlLink.href = json.download_url;
-          dlLink.download = generateFilename(ext);
-          dlLink.textContent = '↓ Download ' + dlLink.download;
-          dlWrap.style.display = 'block';
-        }
+        dlLink.href = pngUrl;
+        dlLink.download = generateFilename('png');
+        dlLink.textContent = '↓ Download ' + dlLink.download;
+        dlWrap.style.display = 'block';
       }
     } catch (err) {
       showError('Something went wrong: ' + (err.message || err));
