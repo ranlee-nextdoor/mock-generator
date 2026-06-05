@@ -651,19 +651,28 @@
 
     const positionScreen = () => {
       const dispW = wrap.offsetWidth;
+      if (!dispW) return;
       const scale = dispW / df.frameW;
       screen.style.left   = Math.round(df.screenX * scale) + 'px';
       screen.style.top    = Math.round(df.screenY * scale) + 'px';
       screen.style.width  = Math.round(df.screenW * scale) + 'px';
       screen.style.height = Math.round(df.screenH * scale) + 'px';
-      // Move preview contents into device screen
-      if (inner.children.length > 0) {
+      // Move ad card children into device screen if not already there
+      const frameImg = document.getElementById('preview-frame-img');
+      if (frameImg && frameImg.parentElement !== innerDevice) {
         while (inner.firstChild) innerDevice.appendChild(inner.firstChild);
       }
+      // Recalculate overlay positions after move
+      requestAnimationFrame(() => {
+        positionMediaLayer();
+        positionLogoLayer();
+        positionTextLayer();
+      });
     };
 
     deviceImg.onload = positionScreen;
     if (deviceImg.complete && deviceImg.naturalWidth) positionScreen();
+    else setTimeout(positionScreen, 300); // fallback
   }
 
   // ── Refresh preview whenever format changes ──
