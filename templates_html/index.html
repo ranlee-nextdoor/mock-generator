@@ -623,41 +623,14 @@
   function updateDeviceFrame() {
     const device = getDevice();
     const df = DEVICE_FRAMES[device];
-    const wrap = document.getElementById('preview-device-wrap');
     const deviceImg = document.getElementById('preview-device-img');
-    const screen = document.getElementById('preview-device-screen');
-    const inner = document.getElementById('preview-area-inner');
-
-    if (!df || !df.file) {
-      wrap.style.display = 'none';
-      inner.style.display = '';
-      return;
+    if (!deviceImg) return;
+    if (df?.file) {
+      deviceImg.src = df.file;
+      deviceImg.style.display = 'block';
+    } else {
+      deviceImg.style.display = 'none';
     }
-
-    // Show device wrap, hide the plain card
-    wrap.style.display = 'block';
-    inner.style.display = 'none';
-    deviceImg.src = df.file;
-
-    deviceImg.onload = () => {
-      const dispW = wrap.offsetWidth;
-      const scale = dispW / df.frameW;
-      const sx = Math.round(df.screenX * scale);
-      const sy = Math.round(df.screenY * scale);
-      const sw = Math.round(df.screenW * scale);
-      const sh = Math.round(df.screenH * scale);
-
-      screen.style.left   = sx + 'px';
-      screen.style.top    = sy + 'px';
-      screen.style.width  = sw + 'px';
-      screen.style.height = sh + 'px';
-
-      // Move ad card into screen
-      screen.appendChild(inner);
-      inner.style.display = '';
-      inner.style.width = '100%';
-    };
-    if (deviceImg.complete && deviceImg.naturalWidth) deviceImg.onload();
   }
 
   // ── Refresh preview whenever format changes ──
@@ -1015,10 +988,10 @@
 
   // Device frame specs (at 1x Figma canvas units)
   const DEVICE_FRAMES = {
-    ios:     { file: '/static/device_ios.png',     frameW: 438, frameH: 906, screenX: 12, screenY: 68, screenW: 414, screenH: 790 },
-    android: { file: '/static/device_android.png', frameW: 430, frameH: 943, screenX: 7,  screenY: 50, screenW: 416, screenH: 841 },
-    web:     { file: '/static/device_mobile.png',  frameW: 407, frameH: 812, screenX: 0,  screenY: 0,  screenW: 407, screenH: 812 },
-    desktop: { file: null }, // no device frame for desktop
+    ios:     { file: '/static/device_ios.png',     frameW: 438, frameH: 906, screenX: 12, screenY: 68, screenW: 414, screenH: 790, statusH: 68 },
+    android: { file: '/static/device_android.png', frameW: 430, frameH: 943, screenX: 7,  screenY: 50, screenW: 416, screenH: 841, statusH: 50 },
+    web:     { file: '/static/device_mobile.png',  frameW: 407, frameH: 812, screenX: 0,  screenY: 0,  screenW: 407, screenH: 812, statusH: 0 },
+    desktop: { file: null },
   };
 
   async function wrapInDeviceFrame(adCanvas, device) {
@@ -1040,12 +1013,10 @@
     canvas.height = deviceH;
     const ctx = canvas.getContext('2d');
 
-    // Draw device frame background
-    ctx.drawImage(deviceImg, 0, 0, deviceW, deviceH);
-    // Draw ad into screen area (center-crop vertically if ad is taller than screen)
+    // Draw ad first into screen area
     const adH = Math.min(adCanvas.height, sh);
     ctx.drawImage(adCanvas, 0, 0, sw, adH, sx, sy, sw, adH);
-    // Draw device chrome on top
+    // Draw device chrome on top (punches through to show status bar and phone border)
     ctx.drawImage(deviceImg, 0, 0, deviceW, deviceH);
 
     return canvas;
@@ -1217,7 +1188,6 @@
         const sx = Math.round(df.screenX * deviceScale);
         const sy = Math.round(df.screenY * deviceScale);
         const adH = Math.min(outputHeight, Math.round(df.screenH * deviceScale));
-        fctx.drawImage(deviceFrameImg, 0, 0, gifW, gifH);
         fctx.drawImage(canvas, 0, 0, outputWidth, adH, sx, sy, outputWidth, adH);
         fctx.drawImage(deviceFrameImg, 0, 0, gifW, gifH);
         gif.addFrame(fctx, { copy: true, delay: Math.round(1000 / fps) });
