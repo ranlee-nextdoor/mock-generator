@@ -123,8 +123,8 @@
 
     /* ── Left column ── */
     .left-col {
-      flex: 1;
-      min-width: 360px;
+      flex: 1 1 400px;
+      min-width: 300px;
       background: #fff;
       border: 1.5px solid #cad3e5;
       border-radius: 12px;
@@ -253,11 +253,10 @@
 
     /* ── Right column ── */
     .right-col {
-      flex: 0 0 480px;
-      width: 480px;
+      flex: 1 1 400px;
+      min-width: 300px;
       position: sticky;
       top: calc(var(--header-height, 120px) + 32px);
-      overflow: hidden;
     }
     .preview-panel {
       display: flex;
@@ -275,9 +274,14 @@
       align-items: flex-start;
       justify-content: center;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
+    }
+    .preview-area-inner {
+      width: 100%;
       border-radius: 12px;
+      overflow: hidden;
       box-shadow: 0 4px 32px rgba(0,0,0,0.15);
+      position: relative;
     }
     .preview-placeholder {
       text-align: center;
@@ -512,19 +516,21 @@
   <div class="right-col">
 
     <div class="preview-area" id="preview-area">
-      <div class="preview-placeholder" id="preview-placeholder">
-        <img src="/static/illustration.svg" width="216" height="144" alt="">
-        <div class="preview-placeholder-text">Your mock will appear here</div>
+      <div class="preview-area-inner" id="preview-area-inner">
+        <div class="preview-placeholder" id="preview-placeholder">
+          <img src="/static/illustration.svg" width="216" height="144" alt="">
+          <div class="preview-placeholder-text">Your mock will appear here</div>
+        </div>
+        <img id="preview-frame-img" alt="Figma frame">
+        <div id="preview-media-layer">
+          <img id="preview-media-img" alt="Media preview" style="display:none">
+          <video id="preview-media-video" autoplay loop muted playsinline style="display:none"></video>
+        </div>
+        <div id="preview-logo-layer">
+          <img id="preview-logo-img" alt="Logo preview">
+        </div>
+        <div id="preview-text-layer" style="position:absolute;top:0;left:0;pointer-events:none;"></div>
       </div>
-      <img id="preview-frame-img" alt="Figma frame">
-      <div id="preview-media-layer">
-        <img id="preview-media-img" alt="Media preview" style="display:none">
-        <video id="preview-media-video" autoplay loop muted playsinline style="display:none"></video>
-      </div>
-      <div id="preview-logo-layer">
-        <img id="preview-logo-img" alt="Logo preview">
-      </div>
-      <div id="preview-text-layer" style="position:absolute;top:0;left:0;pointer-events:none;"></div>
     </div>
 
     <div id="status-msg"></div>
@@ -657,7 +663,7 @@
   function getFrameLayout() {
     const frameImg = document.getElementById('preview-frame-img');
     if (!frameImg.naturalWidth) return null;
-    // Use offsetLeft/Top which are relative to the offsetParent (preview-area)
+    // Use offsetLeft/Top relative to preview-area-inner
     return {
       renderedW: frameImg.offsetWidth,
       renderedH: frameImg.offsetHeight,
