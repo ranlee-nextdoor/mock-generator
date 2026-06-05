@@ -120,6 +120,7 @@ def draw_text_layers(result: Image.Image, texts: dict, scale: float) -> Image.Im
     draw = ImageDraw.Draw(result)
     line_height_ratio = 18.4 / 14.73  # from Figma spec
 
+    headline_end_y = None
     for field, layer in TEXT_LAYERS.items():
         text = texts.get(field, "").strip()
         if not text:
@@ -128,7 +129,11 @@ def draw_text_layers(result: Image.Image, texts: dict, scale: float) -> Image.Im
         font = get_font(size, layer["weight"])
         line_h = size * line_height_ratio
         x = int(layer["x"] * scale)
-        y = int(layer["y"] * scale)
+        # Body starts right after headline with a small gap
+        if field == "body" and headline_end_y is not None:
+            y = int(headline_end_y + 8 * scale)
+        else:
+            y = int(layer["y"] * scale)
         max_w = int(layer["width"] * scale)
         color = layer["color"]
 
@@ -148,6 +153,8 @@ def draw_text_layers(result: Image.Image, texts: dict, scale: float) -> Image.Im
         for line in lines:
             draw.text((x, y), line, font=font, fill=color)
             y += int(line_h)
+        if field == "headline":
+            headline_end_y = y
 
     return result
 

@@ -8,14 +8,20 @@
   <style>
     @font-face {
       font-family: 'Saans';
+      src: url('https://d19rpgkrjeba2z.cloudfront.net/static/fonts/SaansVFUprights.woff2') format('woff2');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Saans';
       src: url('/static/Saans-Regular.woff2') format('woff2');
-      font-weight: 400;
+      font-weight: 420;
       font-style: normal;
     }
     @font-face {
       font-family: 'Saans';
       src: url('/static/Saans-SemiBold.woff2') format('woff2');
-      font-weight: 600;
+      font-weight: 620;
       font-style: normal;
     }
   </style>
@@ -23,7 +29,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: 'Saans', system-ui, -apple-system, sans-serif;
       background: #f0f2f5;
       color: #232f46;
       min-height: 100vh;
@@ -522,6 +528,9 @@
 
     <div class="preview-area" id="preview-area">
       <div class="preview-area-inner" id="preview-area-inner">
+        <!-- Device frame overlay (sits on top of ad card, pointer-events none) -->
+        <img id="preview-device-img" alt="Device frame"
+          style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;pointer-events:none;z-index:20;">
         <div class="preview-placeholder" id="preview-placeholder">
           <img src="/static/illustration.svg" width="216" height="144" alt="">
           <div class="preview-placeholder-text">Your mock will appear here</div>
@@ -592,8 +601,50 @@
     return document.getElementById('sel-device').value;
   }
 
+  // ── Device frame preview ──
+  function updateDeviceFrame() {
+    const device = getDevice();
+    const df = DEVICE_FRAMES[device];
+    const wrap = document.getElementById('preview-device-wrap');
+    const deviceImg = document.getElementById('preview-device-img');
+    const screen = document.getElementById('preview-device-screen');
+    const inner = document.getElementById('preview-area-inner');
+
+    if (!df || !df.file) {
+      wrap.style.display = 'none';
+      inner.style.display = '';
+      return;
+    }
+
+    // Show device wrap, hide the plain card
+    wrap.style.display = 'block';
+    inner.style.display = 'none';
+    deviceImg.src = df.file;
+
+    deviceImg.onload = () => {
+      const dispW = wrap.offsetWidth;
+      const scale = dispW / df.frameW;
+      const sx = Math.round(df.screenX * scale);
+      const sy = Math.round(df.screenY * scale);
+      const sw = Math.round(df.screenW * scale);
+      const sh = Math.round(df.screenH * scale);
+
+      screen.style.left   = sx + 'px';
+      screen.style.top    = sy + 'px';
+      screen.style.width  = sw + 'px';
+      screen.style.height = sh + 'px';
+
+      // Move ad card into screen
+      screen.appendChild(inner);
+      inner.style.display = '';
+      inner.style.width = '100%';
+    };
+    if (deviceImg.complete && deviceImg.naturalWidth) deviceImg.onload();
+  }
+
   // ── Refresh preview whenever format changes ──
   function updateFormatUI() {
+    updateDeviceFrame();
     triggerPreviewRefresh();
   }
 
@@ -716,7 +767,7 @@
   const PREVIEW_TEXT_LAYERS = [
     { field: 'advertiser', x: 64,  y: 17,  width: 210, size: 14, weight: '620', clamp: 1 },
     { field: 'headline',   x: 16,  y: 80,  width: 333, size: 16, weight: '620', clamp: 2 },
-    { field: 'body',       x: 16,  y: 120, width: 333, size: 16, weight: '420', clamp: 2, seeMore: true },
+    { field: 'body',       x: 16,  y: null, width: 333, size: 16, weight: '420', clamp: 2, seeMore: true }, // y calculated dynamically
     { field: 'cta',        x: 16,  y: 554, width: 298, size: 14, weight: '620', clamp: 1 },
   ];
 
@@ -732,13 +783,18 @@
     container.style.height = layout.renderedH + 'px';
     container.innerHTML = '';
     const sx = layout.scaleX;
+    let headlineBottomY = null; // track where headline ends for dynamic body positioning
     for (const layer of PREVIEW_TEXT_LAYERS) {
       const val = (document.getElementById(layer.field === 'body' ? 'body' : layer.field)?.value || '').trim();
       if (!val) continue;
       const el = document.createElement('div');
-      // Positions are now relative to the container (= frame image), no offsetX/Y needed
       const left = `${layer.x * sx}px`;
-      const top  = `${layer.y * sx}px`;
+      // Body y is dynamic: right after headline, with a small gap
+      let yVal = layer.y;
+      if (layer.field === 'body' && headlineBottomY !== null) {
+        yVal = headlineBottomY / sx + 8; // 8px gap in 1x units
+      }
+      const top  = `${yVal * sx}px`;
       const width = `${layer.width * sx}px`;
       const fontSize = `${layer.size * sx}px`;
 
@@ -769,6 +825,14 @@
         el.style.cssText = `left:${left};top:${top};width:${width};font-size:${fontSize};font-weight:${layer.weight};`;
         el.textContent = val;
         container.appendChild(el);
+      }
+      // Cap headline to exactly 2 lines and track where it ends
+      if (layer.field === 'headline') {
+        const maxLines = 2;
+        const lineH = layer.size * sx * 1.25;
+        el.style.maxHeight = (lineH * maxLines) + 'px';
+        el.style.overflow = 'hidden';
+        headlineBottomY = parseFloat(top) + Math.min(el.offsetHeight, lineH * maxLines);
       }
     }
   }
@@ -859,6 +923,7 @@
       body: document.getElementById('body')?.value || '',
       cta: document.getElementById('cta')?.value || '',
     };
+    let headlineEndY = null; // track where headline ends for tight body positioning
     for (const [field, layer] of Object.entries(TEXT_LAYERS)) {
       const text = texts[field]?.trim();
       if (!text) continue;
@@ -879,11 +944,14 @@
           lines[lines.length - 1] = last + suffix;
         }
       }
-      let y = layer.y * scale;
+      // Body starts right after headline with a small gap
+      let startY = (field === 'body' && headlineEndY !== null) ? headlineEndY + 8 * scale : layer.y * scale;
+      let y = startY;
       for (const line of lines) {
         ctx.fillText(line, layer.x * scale, y);
         y += lineH;
       }
+      if (field === 'headline') headlineEndY = y;
     }
   }
 
@@ -1216,6 +1284,7 @@
 
   // ── Reposition overlays on window resize ──
   window.addEventListener('resize', () => {
+    updateDeviceFrame();
     positionMediaLayer();
     positionLogoLayer();
     positionTextLayer();
