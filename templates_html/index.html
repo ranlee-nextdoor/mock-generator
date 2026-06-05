@@ -299,6 +299,7 @@
       justify-content: center;
       position: relative;
       overflow: visible;
+      transition: padding 0.2s ease;
     }
     .preview-area-inner {
       width: 100%;
@@ -547,17 +548,13 @@
 
     <div class="preview-area" id="preview-area">
 
-      <!-- Device frame wrapper: shown when a device is selected -->
+      <!-- Device + ad in one container -->
       <div id="preview-device-wrap" style="display:none;position:relative;width:100%;">
-        <img id="preview-device-img" alt="Device frame" style="width:100%;display:block;pointer-events:none;">
-        <!-- Ad card positioned inside the phone screen -->
-        <div id="preview-device-screen" style="position:absolute;overflow:hidden;">
-          <div id="preview-area-inner-device" style="width:100%;background:#fff;position:relative;overflow:hidden;">
-          </div>
-        </div>
+        <img id="preview-device-img" alt="Device frame" style="width:100%;display:block;pointer-events:none;position:relative;z-index:2;">
+        <div id="preview-device-screen" style="position:absolute;overflow:hidden;z-index:1;"></div>
       </div>
 
-      <!-- Standalone ad card (shown when no device frame) -->
+      <!-- Standalone ad card (no device) -->
       <div class="preview-area-inner" id="preview-area-inner">
         <div class="preview-placeholder" id="preview-placeholder">
           <img src="/static/illustration.svg" width="216" height="144" alt="">
@@ -635,44 +632,40 @@
     const wrap = document.getElementById('preview-device-wrap');
     const deviceImg = document.getElementById('preview-device-img');
     const screen = document.getElementById('preview-device-screen');
-    const inner = document.getElementById('preview-area-inner');
-    const innerDevice = document.getElementById('preview-area-inner-device');
+    const standalone = document.getElementById('preview-area-inner');
 
     if (!df?.file) {
       wrap.style.display = 'none';
-      inner.style.display = '';
+      standalone.style.display = '';
       return;
     }
 
-    // Show device wrap, hide standalone card
-    wrap.style.display = 'block';
-    inner.style.display = 'none';
     deviceImg.src = df.file;
+    wrap.style.display = 'block';
+    standalone.style.display = 'none';
 
-    const positionScreen = () => {
-      const dispW = wrap.offsetWidth;
-      if (!dispW) return;
-      const scale = dispW / df.frameW;
-      screen.style.left   = Math.round(df.screenX * scale) + 'px';
-      screen.style.top    = Math.round(df.screenY * scale) + 'px';
-      screen.style.width  = Math.round(df.screenW * scale) + 'px';
-      screen.style.height = Math.round(df.screenH * scale) + 'px';
-      // Move ad card children into device screen if not already there
-      const frameImg = document.getElementById('preview-frame-img');
-      if (frameImg && frameImg.parentElement !== innerDevice) {
-        while (inner.firstChild) innerDevice.appendChild(inner.firstChild);
-      }
-      // Recalculate overlay positions after move
-      requestAnimationFrame(() => {
-        positionMediaLayer();
-        positionLogoLayer();
-        positionTextLayer();
-      });
+    const place = () => {
+      const W = wrap.offsetWidth || deviceImg.naturalWidth;
+      const H = deviceImg.offsetHeight || (W * df.frameH / df.frameW);
+      const pctL = (df.screenX / df.frameW * 100).toFixed(3) + '%';
+      const pctT = (df.screenY / df.frameH * 100).toFixed(3) + '%';
+      const pctW = (df.screenW / df.frameW * 100).toFixed(3) + '%';
+      const pctH = (df.screenH / df.frameH * 100).toFixed(3) + '%';
+      screen.style.left   = pctL;
+      screen.style.top    = pctT;
+      screen.style.width  = pctW;
+      screen.style.height = pctH;
+      screen.style.background = '#fff';
+
+      // Copy ad card into screen (using innerHTML snapshot)
+      screen.innerHTML = standalone.innerHTML;
+      // Re-show preview-frame-img inside screen
+      const fi = screen.querySelector('#preview-frame-img');
+      if (fi) fi.style.display = 'block';
     };
 
-    deviceImg.onload = positionScreen;
-    if (deviceImg.complete && deviceImg.naturalWidth) positionScreen();
-    else setTimeout(positionScreen, 300); // fallback
+    deviceImg.onload = place;
+    if (deviceImg.complete && deviceImg.naturalWidth) place();
   }
 
   // ── Refresh preview whenever format changes ──
