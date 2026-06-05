@@ -43,7 +43,9 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 20px 83px;
+      padding: 20px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
     }
     .header-wordmark {
       font-size: 22px;
@@ -60,7 +62,9 @@
     .header-controls {
       display: flex;
       gap: 16px;
-      padding: 0 83px 16px;
+      padding: 0 40px 16px;
+      max-width: 1100px;
+      margin: 0 auto;
     }
     .select-group {
       display: flex;
@@ -113,9 +117,9 @@
     .layout {
       display: flex;
       align-items: flex-start;
-      max-width: 1440px;
+      max-width: 1100px;
       margin: 0 auto;
-      padding: 32px 83px;
+      padding: 32px 40px;
       padding-top: calc(var(--header-height, 120px) + 32px);
       gap: 26px;
       min-height: 100vh;
@@ -253,8 +257,9 @@
 
     /* ── Right column ── */
     .right-col {
-      flex: 1 1 400px;
-      min-width: 300px;
+      flex: 1 1 300px;
+      max-width: 33%;
+      min-width: 280px;
       position: sticky;
       top: calc(var(--header-height, 120px) + 32px);
     }
@@ -1208,6 +1213,13 @@
     banner.textContent = msg;
     banner.style.display = 'block';
   }
+
+  // ── Reposition overlays on window resize ──
+  window.addEventListener('resize', () => {
+    positionMediaLayer();
+    positionLogoLayer();
+    positionTextLayer();
+  });
 
   // ── Init ──
   updateFormatUI();
