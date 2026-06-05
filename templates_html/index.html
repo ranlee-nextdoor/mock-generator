@@ -265,18 +265,17 @@
       align-items: center;
       gap: 16px;
       min-height: 480px;
+      background: transparent;
     }
     .preview-area {
       width: 100%;
       flex: 1;
       min-height: 480px;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       position: relative;
-      border-radius: 12px;
       overflow: hidden;
-      background: #fff;
     }
     .preview-placeholder {
       text-align: center;
@@ -285,7 +284,12 @@
       flex-direction: column;
       align-items: center;
       gap: 16px;
-      padding: 24px;
+      padding: 48px 24px;
+      background: #e8eaed;
+      border-radius: 12px;
+      width: 100%;
+      min-height: 480px;
+      justify-content: center;
     }
     .preview-placeholder-text {
       font-size: 32px;
@@ -299,12 +303,13 @@
       width: auto;
       height: auto;
       border-radius: 8px;
-      box-shadow: 0 2px 24px rgba(0,0,0,0.10);
+      box-shadow: 0 4px 32px rgba(0,0,0,0.18);
     }
     #preview-media-layer {
       display: none;
       position: absolute;
       overflow: hidden;
+      background: #d0d5de;
     }
     #preview-media-layer img,
     #preview-media-layer video {
@@ -672,7 +677,7 @@
     if (!layout) return;
     const mr = currentFrameData.media_region;
     const layer = document.getElementById('preview-media-layer');
-    layer.style.display = 'block';
+    layer.style.display = 'block'; // always show (gray bg until media uploaded)
     layer.style.left   = `${layout.offsetX + mr.x * layout.scaleX}px`;
     layer.style.top    = `${layout.offsetY + mr.y * layout.scaleY}px`;
     layer.style.width  = `${mr.width * layout.scaleX}px`;
