@@ -305,6 +305,8 @@
       border-radius: 12px;
       overflow: hidden;
       position: relative;
+    }
+    .preview-area-inner.has-content {
       background: #fff;
     }
     .preview-area-inner.has-content {
@@ -323,8 +325,8 @@
       justify-content: center;
     }
     .preview-placeholder-text {
-      font-size: 32px;
-      line-height: 36px;
+      font-size: 24px;
+      line-height: 30px;
       font-weight: 700;
       color: #232f46;
     }
@@ -1325,15 +1327,7 @@
     logoObjectURL = null;
   });
 
-  // ── Random placeholder tagline ──
-  const TAGLINES = [
-    "See it before you pitch it",
-    "Show, don't tell",
-    "Mocks that close deals",
-    "Here to help",
-  ];
-  document.getElementById('placeholder-text').textContent =
-    TAGLINES[Math.floor(Math.random() * TAGLINES.length)];
+  document.getElementById('placeholder-text').textContent = 'Ready!';
 
   // ── Init ──
   updateFormatUI();
