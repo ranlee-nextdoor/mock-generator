@@ -245,7 +245,8 @@
       justify-content: flex-end;
     }
     .generate-btn {
-      padding: 12px 24px;
+      height: 40px;
+      padding: 0 24px;
       background: #232f46;
       color: #fff;
       border: none;
@@ -258,6 +259,20 @@
     }
     .generate-btn:hover { background: #2e3d5a; }
     .generate-btn:disabled { background: #9aa3b2; cursor: not-allowed; }
+    .clear-btn {
+      height: 40px;
+      padding: 0 20px;
+      background: #f0f2f5;
+      color: #232f46;
+      border: none;
+      border-radius: 1000px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .clear-btn:hover { background: #e2e5ea; }
 
     /* ── Right column ── */
     .right-col {
@@ -308,6 +323,7 @@
     }
     .preview-placeholder-text {
       font-size: 32px;
+      line-height: 36px;
       font-weight: 700;
       color: #232f46;
     }
@@ -453,7 +469,13 @@
 
   <!-- Left column -->
   <div class="left-col">
-    <div class="left-col-title">Assets</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div class="left-col-title">Assets</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="clear-btn" id="clear-btn" type="button">Clear all</button>
+        <button class="generate-btn" id="submit-btn" type="button">Generate</button>
+      </div>
+    </div>
 
     <!-- Upload zones -->
     <div class="upload-row">
@@ -509,10 +531,6 @@
       <input type="text" id="cta" name="cta" placeholder="e.g. Learn More">
     </div>
 
-    <!-- Generate button (right-aligned) -->
-    <div class="generate-row">
-      <button class="generate-btn" id="submit-btn" type="button">Generate</button>
-    </div>
 
     <!-- Hidden video options (kept for /generate compat) -->
     <div id="video-options" class="hidden">
@@ -1289,6 +1307,30 @@
     positionMediaLayer();
     positionLogoLayer();
     positionTextLayer();
+  });
+
+  // ── Clear All ──
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    ['advertiser','headline','body','cta'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    ['logo','media'].forEach(id => {
+      const input = document.getElementById(id);
+      input.value = '';
+      document.getElementById(id + '-zone')?.classList.remove('has-file');
+      document.getElementById(id + '-filename').textContent = '';
+    });
+    // Reset preview
+    document.getElementById('preview-media-layer').style.display = 'none';
+    document.getElementById('preview-logo-layer').style.display = 'none';
+    document.getElementById('preview-text-layer').innerHTML = '';
+    document.getElementById('video-note').style.display = 'none';
+    document.getElementById('download-wrap').style.display = 'none';
+    document.getElementById('status-msg').textContent = '';
+    document.getElementById('submit-btn').textContent = 'Generate';
+    hasGenerated = false;
+    mediaObjectURL = null;
+    logoObjectURL = null;
   });
 
   // ── Random placeholder tagline ──
