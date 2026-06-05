@@ -81,8 +81,6 @@
     .select-label {
       font-size: 12px;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
       color: #232f46;
     }
     select {
@@ -291,8 +289,10 @@
       width: 100%;
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 4px 32px rgba(0,0,0,0.15);
       position: relative;
+    }
+    .preview-area-inner.has-content {
+      box-shadow: 0 4px 32px rgba(0,0,0,0.15);
     }
     .preview-placeholder {
       text-align: center;
@@ -863,10 +863,12 @@
       const placeholder = document.getElementById('preview-placeholder');
       const area = document.getElementById('preview-area');
       frameImg.style.display = 'none'; // hide until loaded
+      const inner = document.getElementById('preview-area-inner');
       frameImg.onload = () => {
         frameImg.style.display = 'block';
         placeholder.style.display = 'none';
         area.classList.add('has-frame');
+        inner.classList.add('has-content');
         positionMediaLayer();
         positionLogoLayer();
         positionTextLayer();
@@ -876,6 +878,7 @@
         frameImg.style.display = 'block';
         placeholder.style.display = 'none';
         area.classList.add('has-frame');
+        inner.classList.add('has-content');
         positionMediaLayer();
         positionLogoLayer();
       }
