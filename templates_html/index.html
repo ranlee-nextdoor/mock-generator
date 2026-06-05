@@ -305,6 +305,7 @@
       border-radius: 12px;
       overflow: hidden;
       position: relative;
+      background: #fff;
     }
     .preview-area-inner.has-content {
       box-shadow: 0 4px 32px rgba(0,0,0,0.15);
@@ -473,7 +474,7 @@
       <div class="left-col-title">Assets</div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="clear-btn" id="clear-btn" type="button">Clear all</button>
-        <button class="generate-btn" id="submit-btn" type="button">Generate</button>
+        <button class="generate-btn" id="submit-btn" type="button">Download</button>
       </div>
     </div>
 
@@ -564,7 +565,6 @@
     </div>
 
     <div id="status-msg"></div>
-    <div id="download-wrap"><a id="dl-link" href="#">↓ Download mockup</a></div>
 
   </div><!-- /right-col -->
 
@@ -1233,16 +1233,13 @@
     });
   }
 
-  // ── Generate / Regenerate button label ──
-  let hasGenerated = false;
+  let hasGenerated = false; // kept for clear-all reset
 
 
   // ── Generate button ──
   document.getElementById('submit-btn').addEventListener('click', async () => {
     const btn = document.getElementById('submit-btn');
     const statusMsg = document.getElementById('status-msg');
-    const dlWrap = document.getElementById('download-wrap');
-    const dlLink = document.getElementById('dl-link');
     const errorBanner = document.getElementById('error-banner');
 
     const mediaFile = document.getElementById('media').files[0];
@@ -1253,7 +1250,6 @@
 
     btn.disabled = true;
     statusMsg.textContent = 'Generating…';
-    dlWrap.style.display = 'none';
     errorBanner.style.display = 'none';
 
     try {
@@ -1264,13 +1260,11 @@
           document.getElementById('logo').files[0] || null,
           currentFrameData
         );
-        statusMsg.textContent = 'Done!';
-        hasGenerated = true;
-        btn.textContent = 'Regenerate';
-        dlLink.href = gifUrl;
-        dlLink.download = generateFilename('gif');
-        dlLink.textContent = '↓ Download ' + dlLink.download;
-        dlWrap.style.display = 'block';
+        const a = document.createElement('a');
+        a.href = gifUrl;
+        a.download = generateFilename('gif');
+        a.click();
+        statusMsg.textContent = '';
       } else {
         // Image: generate client-side for exact preview match
         statusMsg.textContent = 'Generating…';
@@ -1279,13 +1273,11 @@
           document.getElementById('logo').files[0] || null,
           currentFrameData
         );
-        statusMsg.textContent = 'Done!';
-        hasGenerated = true;
-        btn.textContent = 'Regenerate';
-        dlLink.href = pngUrl;
-        dlLink.download = generateFilename('png');
-        dlLink.textContent = '↓ Download ' + dlLink.download;
-        dlWrap.style.display = 'block';
+        const a = document.createElement('a');
+        a.href = pngUrl;
+        a.download = generateFilename('png');
+        a.click();
+        statusMsg.textContent = '';
       }
     } catch (err) {
       showError('Something went wrong: ' + (err.message || err));
