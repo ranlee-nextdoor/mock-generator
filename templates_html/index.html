@@ -193,6 +193,16 @@
       color: #232f46;
       margin-top: 4px;
     }
+    .brand-toggle {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1B8751;
+      cursor: pointer;
+      margin-top: 6px;
+      text-decoration: none;
+    }
+    .brand-toggle:hover { text-decoration: underline; }
     .prompt-result-label {
       font-size: 12px;
       font-weight: 600;
@@ -544,13 +554,14 @@
              placeholder="Paste a brand's website (e.g. nike.com) to pull in their logo and creatives"
              autocomplete="off" autocapitalize="off" spellcheck="false">
       <div id="brand-status" style="font-size:12px;color:#576580;display:none;"></div>
+      <a id="brand-toggle" class="brand-toggle" style="display:none;" role="button" tabindex="0"></a>
       <div id="brand-results" style="display:none;margin-top:4px;">
         <div id="brand-logos-group" style="display:none;">
-          <div class="prompt-result-label">Logo — click to use</div>
+          <div class="prompt-result-label">Logos — click to swap</div>
           <div id="brand-logos" class="brand-grid"></div>
         </div>
         <div id="brand-creatives-group" style="display:none;">
-          <div class="prompt-result-label">Creatives — click to use as media</div>
+          <div class="prompt-result-label">Creatives — click to swap</div>
           <div id="brand-creatives" class="brand-grid"></div>
         </div>
       </div>
@@ -789,7 +800,9 @@
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  async function useBrandImage(thumbEl, url, inputId) {
+  // Returns true if the image loaded and was injected. silent=true suppresses
+  // the error banner (used for auto-fill, which falls back to the next option).
+  async function useBrandImage(thumbEl, url, inputId, silent = false) {
     const group = thumbEl.parentElement;
     group.querySelectorAll('.brand-thumb.selected').forEach(t => t.classList.remove('selected'));
     thumbEl.classList.add('selected');
@@ -800,9 +813,11 @@
       const ext = (blob.type.split('/')[1] || 'png').split('+')[0];
       const name = `${inputId}_brand.${ext}`;
       injectFileIntoInput(inputId, new File([blob], name, { type: blob.type }));
+      return true;
     } catch (err) {
       thumbEl.classList.remove('selected');
-      showError('Could not load that image: ' + (err.message || err));
+      if (!silent) showError('Could not load that image: ' + (err.message || err));
+      return false;
     }
   }
 
@@ -810,8 +825,9 @@
     const group = document.getElementById(groupId);
     const container = document.getElementById(containerId);
     container.innerHTML = '';
-    if (!urls || !urls.length) { group.style.display = 'none'; return; }
+    if (!urls || !urls.length) { group.style.display = 'none'; return []; }
     group.style.display = '';
+    const entries = [];
     urls.forEach(url => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -824,7 +840,17 @@
       btn.appendChild(img);
       btn.addEventListener('click', () => useBrandImage(btn, url, targetInput));
       container.appendChild(btn);
+      entries.push({ btn, url });
     });
+    return entries;
+  }
+
+  // Auto-fill the first option that successfully loads; fall back down the list.
+  async function autoFillFirst(entries, inputId) {
+    for (const { btn, url } of entries) {
+      if (await useBrandImage(btn, url, inputId, true)) return true;
+    }
+    return false;
   }
 
   // Pull the first domain/URL out of the free-text prompt.
@@ -848,17 +874,35 @@
     promptEl.disabled = true;
     statusEl.textContent = `Pulling assets from ${domain}…`;
     resultsEl.style.display = 'none';
+    const toggle = document.getElementById('brand-toggle');
+    toggle.style.display = 'none';
     try {
       const res = await fetch(`/api/brand?domain=${encodeURIComponent(domain)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Lookup failed');
-      renderBrandThumbs('brand-logos', 'brand-logos-group', data.logos, 'logo');
-      renderBrandThumbs('brand-creatives', 'brand-creatives-group', data.creatives, 'media');
-      resultsEl.style.display = '';
-      const n = (data.logos?.length || 0) + (data.creatives?.length || 0);
-      statusEl.textContent = n
-        ? `Found assets for ${data.domain}. Click a logo or creative to drop it in — or upload manually below.`
-        : `No assets found for ${data.domain}. Upload manually below.`;
+      const logoEntries = renderBrandThumbs('brand-logos', 'brand-logos-group', data.logos, 'logo');
+      const creativeEntries = renderBrandThumbs('brand-creatives', 'brand-creatives-group', data.creatives, 'media');
+
+      // Auto-fill the first logo + first creative.
+      const [gotLogo, gotCreative] = await Promise.all([
+        autoFillFirst(logoEntries, 'logo'),
+        autoFillFirst(creativeEntries, 'media'),
+      ]);
+
+      const total = logoEntries.length + creativeEntries.length;
+      const extras = total - (gotLogo ? 1 : 0) - (gotCreative ? 1 : 0);
+      if (extras > 0) {
+        // Keep the rest collapsed behind an expandable link.
+        resultsEl.style.display = 'none';
+        toggle.dataset.showText = `Show ${extras} other option${extras > 1 ? 's' : ''}`;
+        toggle.textContent = toggle.dataset.showText;
+        toggle.style.display = '';
+      }
+
+      const filled = [gotLogo && 'logo', gotCreative && 'media'].filter(Boolean).join(' + ');
+      statusEl.textContent = filled
+        ? `Filled ${filled} from ${data.domain}.`
+        : `No usable assets found for ${data.domain}. Upload manually below.`;
     } catch (err) {
       statusEl.textContent = 'Could not fetch: ' + (err.message || err);
     } finally {
@@ -866,8 +910,20 @@
     }
   }
 
+  function toggleBrandOptions() {
+    const results = document.getElementById('brand-results');
+    const toggle = document.getElementById('brand-toggle');
+    const expanded = results.style.display !== 'none';
+    results.style.display = expanded ? 'none' : '';
+    toggle.textContent = expanded ? toggle.dataset.showText : 'Hide options';
+  }
+
   document.getElementById('ad-prompt').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); runPrompt(); }
+  });
+  document.getElementById('brand-toggle').addEventListener('click', toggleBrandOptions);
+  document.getElementById('brand-toggle').addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleBrandOptions(); }
   });
 
   // ── Live preview: media overlay ──
