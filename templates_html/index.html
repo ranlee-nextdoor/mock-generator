@@ -178,6 +178,56 @@
       width: 100%;
       height: 100%;
     }
+    .prompt-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 620;
+      color: #232f46;
+    }
+    .prompt-sparkle { flex-shrink: 0; }
+    .section-sublabel {
+      font-size: 13px;
+      font-weight: 620;
+      color: #232f46;
+      margin-top: 4px;
+    }
+    .prompt-result-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #576580;
+      margin: 8px 0 4px;
+    }
+    .brand-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+      gap: 8px;
+    }
+    .brand-thumb {
+      position: relative;
+      aspect-ratio: 1;
+      border: 1px solid #d4dae6;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      background: #fff;
+      padding: 0;
+      transition: border-color .12s, box-shadow .12s;
+    }
+    .brand-thumb:hover {
+      border-color: #00b246;
+      box-shadow: 0 0 0 2px rgba(0,178,70,.2);
+    }
+    .brand-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .brand-thumb.selected {
+      border-color: #00b246;
+      box-shadow: 0 0 0 2px rgba(0,178,70,.35);
+    }
     .upload-icon {
       font-size: 22px;
       margin-bottom: 6px;
@@ -481,7 +531,33 @@
       </div>
     </div>
 
+    <!-- AI prompt area -->
+    <div class="field" id="prompt-area">
+      <label class="prompt-label" for="ad-prompt">
+        <svg class="prompt-sparkle" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 1l1.6 4.4L14 7l-4.4 1.6L8 13l-1.6-4.4L2 7l4.4-1.6L8 1z" fill="#232f46"/>
+          <path d="M13 1.5l.5 1.5L15 3.5 13.5 4 13 5.5 12.5 4 11 3.5l1.5-.5L13 1.5z" fill="#232f46"/>
+        </svg>
+        What kind of ad are you looking to mock up?
+      </label>
+      <input type="text" id="ad-prompt"
+             placeholder="Paste a brand's website (e.g. nike.com) to pull in their logo and creatives"
+             autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div id="brand-status" style="font-size:12px;color:#576580;display:none;"></div>
+      <div id="brand-results" style="display:none;margin-top:4px;">
+        <div id="brand-logos-group" style="display:none;">
+          <div class="prompt-result-label">Logo — click to use</div>
+          <div id="brand-logos" class="brand-grid"></div>
+        </div>
+        <div id="brand-creatives-group" style="display:none;">
+          <div class="prompt-result-label">Creatives — click to use as media</div>
+          <div id="brand-creatives" class="brand-grid"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Upload zones -->
+    <div class="section-sublabel">Manual upload</div>
     <div class="upload-row">
       <div class="upload-zone" id="logo-zone">
         <input type="file" id="logo" name="logo" accept="image/*">
@@ -701,6 +777,98 @@
   }
   wireUploadZone('logo', 'logo-zone', 'logo-filename');
   wireUploadZone('media', 'media-zone', 'media-filename');
+
+  // ── Pull from brand ──
+  // Loads a brand's logo/creatives, then injects the chosen image into the
+  // existing file input so preview + generation flow through unchanged.
+  function injectFileIntoInput(inputId, file) {
+    const input = document.getElementById(inputId);
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  async function useBrandImage(thumbEl, url, inputId) {
+    const group = thumbEl.parentElement;
+    group.querySelectorAll('.brand-thumb.selected').forEach(t => t.classList.remove('selected'));
+    thumbEl.classList.add('selected');
+    try {
+      const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error((await res.json()).error || 'Could not load image');
+      const blob = await res.blob();
+      const ext = (blob.type.split('/')[1] || 'png').split('+')[0];
+      const name = `${inputId}_brand.${ext}`;
+      injectFileIntoInput(inputId, new File([blob], name, { type: blob.type }));
+    } catch (err) {
+      thumbEl.classList.remove('selected');
+      showError('Could not load that image: ' + (err.message || err));
+    }
+  }
+
+  function renderBrandThumbs(containerId, groupId, urls, targetInput) {
+    const group = document.getElementById(groupId);
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    if (!urls || !urls.length) { group.style.display = 'none'; return; }
+    group.style.display = '';
+    urls.forEach(url => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'brand-thumb';
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.src = `/api/proxy-image?url=${encodeURIComponent(url)}`;
+      // Drop thumbnails that fail to load (dead links, blocked hosts).
+      img.onerror = () => btn.remove();
+      btn.appendChild(img);
+      btn.addEventListener('click', () => useBrandImage(btn, url, targetInput));
+      container.appendChild(btn);
+    });
+  }
+
+  // Pull the first domain/URL out of the free-text prompt.
+  function extractDomain(text) {
+    const m = text.match(/\b((?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+)\b/i);
+    return m ? m[1] : '';
+  }
+
+  async function runPrompt() {
+    const prompt = document.getElementById('ad-prompt').value.trim();
+    const statusEl = document.getElementById('brand-status');
+    const resultsEl = document.getElementById('brand-results');
+    const promptEl = document.getElementById('ad-prompt');
+    if (!prompt) return;
+    const domain = extractDomain(prompt);
+    statusEl.style.display = '';
+    if (!domain) {
+      statusEl.textContent = 'Add a website (e.g. nike.com) to the prompt to auto-pull brand assets.';
+      return;
+    }
+    promptEl.disabled = true;
+    statusEl.textContent = `Pulling assets from ${domain}…`;
+    resultsEl.style.display = 'none';
+    try {
+      const res = await fetch(`/api/brand?domain=${encodeURIComponent(domain)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Lookup failed');
+      renderBrandThumbs('brand-logos', 'brand-logos-group', data.logos, 'logo');
+      renderBrandThumbs('brand-creatives', 'brand-creatives-group', data.creatives, 'media');
+      resultsEl.style.display = '';
+      const n = (data.logos?.length || 0) + (data.creatives?.length || 0);
+      statusEl.textContent = n
+        ? `Found assets for ${data.domain}. Click a logo or creative to drop it in — or upload manually below.`
+        : `No assets found for ${data.domain}. Upload manually below.`;
+    } catch (err) {
+      statusEl.textContent = 'Could not fetch: ' + (err.message || err);
+    } finally {
+      promptEl.disabled = false;
+    }
+  }
+
+  document.getElementById('ad-prompt').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); runPrompt(); }
+  });
 
   // ── Live preview: media overlay ──
   function onMediaChange() {

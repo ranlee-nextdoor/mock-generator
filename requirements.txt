@@ -4,3 +4,4 @@ gunicorn>=21.0.0
 Werkzeug>=3.0.0
 requests>=2.31.0
 fonttools>=4.0.0
+beautifulsoup4>=4.12.0

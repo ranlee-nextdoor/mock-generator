@@ -8,6 +8,7 @@ from flask import Flask, jsonify, render_template, request, send_file, send_from
 from PIL import Image
 from werkzeug.utils import secure_filename
 
+import brand as brand_api
 import figma as figma_api
 from main import save_gif, video_to_frames
 
@@ -319,6 +320,26 @@ def format_spec(format_key):
     if not spec:
         return jsonify({"error": "Unknown format"}), 404
     return jsonify(spec)
+
+
+@app.route("/api/brand")
+def brand_assets():
+    """Look up a brand's logo + on-site creatives by domain."""
+    domain = request.args.get("domain", "")
+    result = brand_api.fetch_brand_assets(domain)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@app.route("/api/proxy-image")
+def proxy_image():
+    """Server-side fetch of an external image so the browser dodges CORS."""
+    url = request.args.get("url", "")
+    data, ctype_or_err = brand_api.proxy_image(url)
+    if data is None:
+        return jsonify({"error": ctype_or_err}), 400
+    return data, 200, {"Content-Type": ctype_or_err, "Cache-Control": "public, max-age=3600"}
 
 
 @app.route("/generate", methods=["POST"])
