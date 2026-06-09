@@ -551,7 +551,7 @@
         What kind of ad are you looking to mock up?
       </label>
       <input type="text" id="ad-prompt"
-             placeholder="Paste a brand's website (e.g. nike.com) to pull in their logo and creatives"
+             placeholder="Enter a brand name (e.g. Nike) to pull in their logo and creatives"
              autocomplete="off" autocapitalize="off" spellcheck="false">
       <div id="brand-status" style="font-size:12px;color:#576580;display:none;"></div>
       <a id="brand-toggle" class="brand-toggle" style="display:none;" role="button" tabindex="0"></a>
@@ -853,31 +853,20 @@
     return false;
   }
 
-  // Pull the first domain/URL out of the free-text prompt.
-  function extractDomain(text) {
-    const m = text.match(/\b((?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+)\b/i);
-    return m ? m[1] : '';
-  }
-
   async function runPrompt() {
-    const prompt = document.getElementById('ad-prompt').value.trim();
+    const query = document.getElementById('ad-prompt').value.trim();
     const statusEl = document.getElementById('brand-status');
     const resultsEl = document.getElementById('brand-results');
     const promptEl = document.getElementById('ad-prompt');
-    if (!prompt) return;
-    const domain = extractDomain(prompt);
+    if (!query) return;
     statusEl.style.display = '';
-    if (!domain) {
-      statusEl.textContent = 'Add a website (e.g. nike.com) to the prompt to auto-pull brand assets.';
-      return;
-    }
     promptEl.disabled = true;
-    statusEl.textContent = `Pulling assets from ${domain}…`;
+    statusEl.textContent = `Looking up ${query}…`;
     resultsEl.style.display = 'none';
     const toggle = document.getElementById('brand-toggle');
     toggle.style.display = 'none';
     try {
-      const res = await fetch(`/api/brand?domain=${encodeURIComponent(domain)}`);
+      const res = await fetch(`/api/brand?q=${encodeURIComponent(query)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Lookup failed');
       const logoEntries = renderBrandThumbs('brand-logos', 'brand-logos-group', data.logos, 'logo');
@@ -899,10 +888,11 @@
         toggle.style.display = '';
       }
 
+      const label = data.name || data.domain;
       const filled = [gotLogo && 'logo', gotCreative && 'media'].filter(Boolean).join(' + ');
       statusEl.textContent = filled
-        ? `Filled ${filled} from ${data.domain}.`
-        : `No usable assets found for ${data.domain}. Upload manually below.`;
+        ? `Filled ${filled} from ${label} (${data.domain}).`
+        : `Found ${label}, but no usable assets. Upload manually below.`;
     } catch (err) {
       statusEl.textContent = 'Could not fetch: ' + (err.message || err);
     } finally {

@@ -44,6 +44,57 @@ def normalize_domain(raw: str) -> str:
     return host
 
 
+_DOMAIN_RE = re.compile(r"^(?:https?://)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+/?$", re.IGNORECASE)
+
+
+def _looks_like_domain(query: str) -> bool:
+    """True if the input is already a domain/URL (e.g. 'nike.com'), not a name."""
+    return bool(_DOMAIN_RE.match(query.strip()))
+
+
+def _clearbit_suggest(name: str) -> tuple:
+    """Brand name -> (domain, canonical name) via Clearbit's keyless autocomplete."""
+    try:
+        r = requests.get(
+            "https://autocomplete.clearbit.com/v1/companies/suggest",
+            params={"query": name}, headers={"User-Agent": UA}, timeout=TIMEOUT,
+        )
+        if r.ok and r.json():
+            top = r.json()[0]
+            return top.get("domain", ""), top.get("name", "")
+    except (requests.RequestException, ValueError):
+        pass
+    return "", ""
+
+
+def _brandfetch_search(name: str) -> tuple:
+    """Fallback brand name -> (domain, name) via Brandfetch's keyless search."""
+    try:
+        r = requests.get(
+            f"https://api.brandfetch.io/v2/search/{name}",
+            headers={"User-Agent": UA}, timeout=TIMEOUT,
+        )
+        if r.ok and r.json():
+            top = r.json()[0]
+            return top.get("domain", ""), top.get("name", "")
+    except (requests.RequestException, ValueError):
+        pass
+    return "", ""
+
+
+def resolve_domain(query: str) -> tuple:
+    """Accept a brand name OR a domain; return (domain, display_name)."""
+    query = (query or "").strip()
+    if not query:
+        return "", ""
+    if _looks_like_domain(query):
+        return normalize_domain(query), ""
+    domain, name = _clearbit_suggest(query)
+    if not domain:
+        domain, name = _brandfetch_search(query)
+    return domain, name
+
+
 def _is_public_host(host: str) -> bool:
     """SSRF guard: resolve host and reject private / loopback / reserved IPs."""
     try:
@@ -99,10 +150,10 @@ def _brandfetch_logos(domain: str) -> list:
         return []
 
 
-def fetch_brand_assets(domain_input: str) -> dict:
-    domain = normalize_domain(domain_input)
+def fetch_brand_assets(query: str) -> dict:
+    domain, name = resolve_domain(query)
     if not domain or "." not in domain:
-        return {"error": "Enter a valid brand domain, e.g. nike.com"}
+        return {"error": f"Couldn't find a brand for '{query.strip()}'. Try the website (e.g. nike.com)."}
 
     logos = _brandfetch_logos(domain)
     creatives: list = []
@@ -153,6 +204,7 @@ def fetch_brand_assets(domain_input: str) -> dict:
 
     return {
         "domain": domain,
+        "name": name or domain,
         "logos": _dedupe(logos, skip_noise=False),
         "creatives": _dedupe(creatives)[:MAX_CREATIVES],
     }

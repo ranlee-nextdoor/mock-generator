@@ -324,9 +324,9 @@ def format_spec(format_key):
 
 @app.route("/api/brand")
 def brand_assets():
-    """Look up a brand's logo + on-site creatives by domain."""
-    domain = request.args.get("domain", "")
-    result = brand_api.fetch_brand_assets(domain)
+    """Look up a brand's logo + on-site creatives by name or domain."""
+    query = request.args.get("q") or request.args.get("domain", "")
+    result = brand_api.fetch_brand_assets(query)
     if "error" in result:
         return jsonify(result), 400
     return jsonify(result)
