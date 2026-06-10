@@ -135,11 +135,27 @@ def _dedupe(urls: list, skip_noise: bool = True) -> list:
     return out
 
 
-def _brandfetch_logos(domain: str) -> list:
-    """High-quality logos via Brandfetch, only if a key is configured."""
+def _brandfetch_parse(data: dict) -> tuple:
+    """Pull (logo_urls, image_urls) from a Brandfetch v2 brand payload."""
+    def first_src(entry):
+        for fmt in entry.get("formats", []):
+            if fmt.get("src"):
+                return fmt["src"]
+        return None
+
+    # One src per asset (primary format) to avoid near-duplicate thumbnails.
+    logos = [s for s in (first_src(l) for l in data.get("logos", [])) if s]
+    # `images` holds real brand imagery (banners etc.) — our best creatives,
+    # and they serve from a CDN so they survive datacenter bot-walls.
+    images = [s for s in (first_src(i) for i in data.get("images", [])) if s]
+    return logos, images
+
+
+def _brandfetch_assets(domain: str) -> tuple:
+    """High-quality (logos, brand images) via Brandfetch, only if a key is set."""
     key = os.environ.get("BRANDFETCH_API_KEY")
     if not key:
-        return []
+        return [], []
     try:
         r = requests.get(
             f"https://api.brandfetch.io/v2/brands/{domain}",
@@ -147,15 +163,10 @@ def _brandfetch_logos(domain: str) -> list:
             timeout=TIMEOUT,
         )
         if not r.ok:
-            return []
-        urls = []
-        for logo in r.json().get("logos", []):
-            for fmt in logo.get("formats", []):
-                if fmt.get("src"):
-                    urls.append(fmt["src"])
-        return urls
-    except requests.RequestException:
-        return []
+            return [], []
+        return _brandfetch_parse(r.json())
+    except (requests.RequestException, ValueError):
+        return [], []
 
 
 def fetch_brand_assets(query: str) -> dict:
@@ -163,7 +174,8 @@ def fetch_brand_assets(query: str) -> dict:
     if not domain or "." not in domain:
         return {"error": f"Couldn't find a brand for '{query.strip()}'. Try the website (e.g. nike.com)."}
 
-    logos = _brandfetch_logos(domain)
+    bf_logos, bf_images = _brandfetch_assets(domain)
+    logos = list(bf_logos)
     social_imgs: list = []   # og:image / twitter:image — often just the brand card (= logo)
     content_imgs: list = []  # real inline <img> hero shots
 
@@ -213,7 +225,10 @@ def fetch_brand_assets(query: str) -> dict:
 
     logo_urls = _dedupe(logos, skip_noise=False)
     logo_set = set(logo_urls)
-    content = [u for u in _dedupe(content_imgs) if u not in logo_set]
+    # Brandfetch brand images are the most reliable real creatives — rank first.
+    bf_content = [u for u in _dedupe(bf_images) if u not in logo_set]
+    scraped_content = [u for u in _dedupe(content_imgs) if u not in logo_set and u not in bf_content]
+    content = bf_content + scraped_content
     social = [u for u in _dedupe(social_imgs) if u not in logo_set and u not in content]
 
     # Real content images first; the social card only as a last-resort option.
@@ -224,9 +239,9 @@ def fetch_brand_assets(query: str) -> dict:
         "name": name or domain,
         "logos": logo_urls,
         "creatives": creatives,
-        # True only when we found a genuine inline image — i.e. safe to auto-fill
-        # the media slot. When false, the only "creative" is the brand card, so
-        # we don't want to auto-fill it as the logo's twin.
+        # True only when we found a genuine content image (Brandfetch brand image
+        # or inline hero) — safe to auto-fill media. When false, the only
+        # "creative" is the brand card, so we don't auto-fill the logo's twin.
         "has_content_creative": bool(content),
     }
 
