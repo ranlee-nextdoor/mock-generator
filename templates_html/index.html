@@ -193,6 +193,22 @@
       color: #232f46;
       margin-top: 4px;
     }
+    .arrow-btn {
+      flex-shrink: 0;
+      width: 44px;
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #232f46;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .arrow-btn:hover { background: #2e3d5a; }
+    .arrow-btn:disabled { background: #9aa3b2; cursor: not-allowed; }
     .brand-toggle {
       display: inline-block;
       font-size: 13px;
@@ -541,32 +557,6 @@
       </div>
     </div>
 
-    <!-- AI prompt area -->
-    <div class="field" id="prompt-area">
-      <label class="prompt-label" for="ad-prompt">
-        <svg class="prompt-sparkle" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M8 1l1.6 4.4L14 7l-4.4 1.6L8 13l-1.6-4.4L2 7l4.4-1.6L8 1z" fill="#232f46"/>
-          <path d="M13 1.5l.5 1.5L15 3.5 13.5 4 13 5.5 12.5 4 11 3.5l1.5-.5L13 1.5z" fill="#232f46"/>
-        </svg>
-        What kind of ad are you looking to mock up?
-      </label>
-      <input type="text" id="ad-prompt"
-             placeholder="Enter a brand name (e.g. Nike) to pull in their logo and creatives"
-             autocomplete="off" autocapitalize="off" spellcheck="false">
-      <div id="brand-status" style="font-size:12px;color:#576580;display:none;"></div>
-      <a id="brand-toggle" class="brand-toggle" style="display:none;" role="button" tabindex="0"></a>
-      <div id="brand-results" style="display:none;margin-top:4px;">
-        <div id="brand-logos-group" style="display:none;">
-          <div class="prompt-result-label">Logos — click to swap</div>
-          <div id="brand-logos" class="brand-grid"></div>
-        </div>
-        <div id="brand-creatives-group" style="display:none;">
-          <div class="prompt-result-label">Creatives — click to swap</div>
-          <div id="brand-creatives" class="brand-grid"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- Upload zones -->
     <div class="section-sublabel">Manual upload</div>
     <div class="upload-row">
@@ -610,10 +600,31 @@
       <div id="image-url-status" style="font-size:12px;color:#576580;margin-top:4px;display:none;"></div>
     </div>
 
-    <!-- Advertiser -->
-    <div class="field">
+    <!-- Advertiser name (doubles as brand search) -->
+    <div class="field" id="prompt-area">
       <label class="field-label" for="advertiser">Advertiser name</label>
-      <input type="text" id="advertiser" name="advertiser" placeholder="e.g. Green Thumb Landscaping" maxlength="70">
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="advertiser" name="advertiser" maxlength="70"
+               placeholder="e.g. Nike — press ↵ to pull logo & creatives"
+               style="flex:1;" autocomplete="off">
+        <button class="arrow-btn" id="brand-fetch-btn" type="button" aria-label="Pull brand assets">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+      <div id="brand-status" style="font-size:12px;color:#576580;margin-top:4px;display:none;"></div>
+      <a id="brand-toggle" class="brand-toggle" style="display:none;" role="button" tabindex="0"></a>
+      <div id="brand-results" style="display:none;margin-top:4px;">
+        <div id="brand-logos-group" style="display:none;">
+          <div class="prompt-result-label">Logos — click to swap</div>
+          <div id="brand-logos" class="brand-grid"></div>
+        </div>
+        <div id="brand-creatives-group" style="display:none;">
+          <div class="prompt-result-label">Creatives — click to swap</div>
+          <div id="brand-creatives" class="brand-grid"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Headline -->
@@ -866,10 +877,10 @@
   }
 
   async function runPrompt() {
-    const query = document.getElementById('ad-prompt').value.trim();
+    const promptEl = document.getElementById('advertiser');
+    const query = promptEl.value.trim();
     const statusEl = document.getElementById('brand-status');
     const resultsEl = document.getElementById('brand-results');
-    const promptEl = document.getElementById('ad-prompt');
     if (!query) return;
     statusEl.style.display = '';
     promptEl.disabled = true;
@@ -925,9 +936,10 @@
     toggle.textContent = expanded ? toggle.dataset.showText : 'Hide options';
   }
 
-  document.getElementById('ad-prompt').addEventListener('keydown', e => {
+  document.getElementById('advertiser').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); runPrompt(); }
   });
+  document.getElementById('brand-fetch-btn').addEventListener('click', runPrompt);
   document.getElementById('brand-toggle').addEventListener('click', toggleBrandOptions);
   document.getElementById('brand-toggle').addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleBrandOptions(); }
