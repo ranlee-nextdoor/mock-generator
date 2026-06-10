@@ -606,6 +606,7 @@
                style="flex:1;" autocomplete="off" spellcheck="false">
         <button class="clear-btn" id="image-url-btn" type="button" style="white-space:nowrap;">Add to media</button>
       </div>
+      <div class="upload-hint" style="margin-top:4px;">Tip: open the image to full size first, then copy its address — thumbnails come in low-res. You can also paste a copied image with ⌘V.</div>
       <div id="image-url-status" style="font-size:12px;color:#576580;margin-top:4px;display:none;"></div>
     </div>
 
@@ -965,6 +966,24 @@
   document.getElementById('image-url-btn').addEventListener('click', addImageFromUrl);
   document.getElementById('image-url').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); addImageFromUrl(); }
+  });
+
+  // Paste a copied image (e.g. a screenshot) anywhere on the page → media slot.
+  // Only acts on image clipboard data, so pasting text into fields is unaffected.
+  document.addEventListener('paste', e => {
+    for (const item of (e.clipboardData?.items || [])) {
+      if (item.kind === 'file' && item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        e.preventDefault();
+        const ext = (file.type.split('/')[1] || 'png').split('+')[0];
+        injectFileIntoInput('media', new File([file], `pasted_media.${ext}`, { type: file.type }));
+        const statusEl = document.getElementById('image-url-status');
+        statusEl.style.display = '';
+        statusEl.textContent = 'Pasted image added to media.';
+        return;
+      }
+    }
   });
 
   // ── Live preview: media overlay ──
