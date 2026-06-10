@@ -19,6 +19,14 @@ import requests
 from bs4 import BeautifulSoup
 
 UA = "Mozilla/5.0 (compatible; NextdoorMockGenerator/1.0)"
+# More browser-like headers for homepage fetches — reduces (doesn't eliminate)
+# datacenter bot-walls that serve stripped pages to plain server requests.
+BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
 TIMEOUT = 10
 MAX_IMAGE_BYTES = 25 * 1024 * 1024  # 25MB cap on proxied images
 MAX_CREATIVES = 12
@@ -156,11 +164,12 @@ def fetch_brand_assets(query: str) -> dict:
         return {"error": f"Couldn't find a brand for '{query.strip()}'. Try the website (e.g. nike.com)."}
 
     logos = _brandfetch_logos(domain)
-    creatives: list = []
+    social_imgs: list = []   # og:image / twitter:image — often just the brand card (= logo)
+    content_imgs: list = []  # real inline <img> hero shots
 
     # One homepage fetch feeds both logo and creative discovery.
     try:
-        r = requests.get(f"https://{domain}", headers={"User-Agent": UA}, timeout=TIMEOUT)
+        r = requests.get(f"https://{domain}", headers=BROWSER_HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
         base = str(r.url)
@@ -177,7 +186,7 @@ def fetch_brand_assets(query: str) -> dict:
                 if tag.get(attr):
                     logos.append(urljoin(base, tag[attr]))
 
-        # Creatives: the brand's chosen social-preview "hero" shots first.
+        # Social-preview images — kept as fallback only (frequently the logo on a card).
         for sel, attr in [
             ('meta[property="og:image"]', "content"),
             ('meta[property="og:image:secure_url"]', "content"),
@@ -186,27 +195,39 @@ def fetch_brand_assets(query: str) -> dict:
         ]:
             for tag in soup.select(sel):
                 if tag.get(attr):
-                    creatives.append(urljoin(base, tag[attr]))
+                    social_imgs.append(urljoin(base, tag[attr]))
 
-        # Then prominent inline images.
+        # Prominent inline images — the real creatives.
         for img in soup.find_all("img"):
             src = img.get("src") or img.get("data-src")
             if not src:
                 srcset = img.get("data-srcset") or img.get("srcset") or ""
                 src = srcset.split()[0] if srcset.split() else None
             if src:
-                creatives.append(urljoin(base, src))
+                content_imgs.append(urljoin(base, src))
     except requests.RequestException:
         pass
 
     # Guaranteed keyless logo backstop.
     logos.append(f"https://www.google.com/s2/favicons?domain={domain}&sz=256")
 
+    logo_urls = _dedupe(logos, skip_noise=False)
+    logo_set = set(logo_urls)
+    content = [u for u in _dedupe(content_imgs) if u not in logo_set]
+    social = [u for u in _dedupe(social_imgs) if u not in logo_set and u not in content]
+
+    # Real content images first; the social card only as a last-resort option.
+    creatives = (content + social)[:MAX_CREATIVES]
+
     return {
         "domain": domain,
         "name": name or domain,
-        "logos": _dedupe(logos, skip_noise=False),
-        "creatives": _dedupe(creatives)[:MAX_CREATIVES],
+        "logos": logo_urls,
+        "creatives": creatives,
+        # True only when we found a genuine inline image — i.e. safe to auto-fill
+        # the media slot. When false, the only "creative" is the brand card, so
+        # we don't want to auto-fill it as the logo's twin.
+        "has_content_creative": bool(content),
     }
 
 

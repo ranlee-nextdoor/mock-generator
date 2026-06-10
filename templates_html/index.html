@@ -872,11 +872,13 @@
       const logoEntries = renderBrandThumbs('brand-logos', 'brand-logos-group', data.logos, 'logo');
       const creativeEntries = renderBrandThumbs('brand-creatives', 'brand-creatives-group', data.creatives, 'media');
 
-      // Auto-fill the first logo + first creative.
-      const [gotLogo, gotCreative] = await Promise.all([
-        autoFillFirst(logoEntries, 'logo'),
-        autoFillFirst(creativeEntries, 'media'),
-      ]);
+      // Auto-fill the logo (reliable). Only auto-fill media when we found a real
+      // content image — otherwise the only "creative" is the brand card (= logo),
+      // so we leave media for the rep to pick or upload.
+      const gotLogo = await autoFillFirst(logoEntries, 'logo');
+      const gotCreative = data.has_content_creative
+        ? await autoFillFirst(creativeEntries, 'media')
+        : false;
 
       const total = logoEntries.length + creativeEntries.length;
       const extras = total - (gotLogo ? 1 : 0) - (gotCreative ? 1 : 0);
@@ -889,10 +891,13 @@
       }
 
       const label = data.name || data.domain;
-      const filled = [gotLogo && 'logo', gotCreative && 'media'].filter(Boolean).join(' + ');
-      statusEl.textContent = filled
-        ? `Filled ${filled} from ${label} (${data.domain}).`
-        : `Found ${label}, but no usable assets. Upload manually below.`;
+      if (gotLogo && gotCreative) {
+        statusEl.textContent = `Filled logo + media from ${label} (${data.domain}).`;
+      } else if (gotLogo) {
+        statusEl.textContent = `Filled the logo from ${label}. No clean creative found — pick one below or upload your own.`;
+      } else {
+        statusEl.textContent = `Found ${label}, but no usable assets. Upload manually below.`;
+      }
     } catch (err) {
       statusEl.textContent = 'Could not fetch: ' + (err.message || err);
     } finally {
