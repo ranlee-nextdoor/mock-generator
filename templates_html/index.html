@@ -598,6 +598,17 @@
       </div>
     </div>
 
+    <!-- Paste image URL (e.g. an image found via Google Images) -->
+    <div class="field" id="paste-url-field" style="margin-top:12px;">
+      <label class="field-label" for="image-url">Or paste an image URL</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="image-url" placeholder="Right-click an image → Copy image address, then paste here"
+               style="flex:1;" autocomplete="off" spellcheck="false">
+        <button class="clear-btn" id="image-url-btn" type="button" style="white-space:nowrap;">Add to media</button>
+      </div>
+      <div id="image-url-status" style="font-size:12px;color:#576580;margin-top:4px;display:none;"></div>
+    </div>
+
     <!-- Advertiser -->
     <div class="field">
       <label class="field-label" for="advertiser">Advertiser name</label>
@@ -919,6 +930,41 @@
   document.getElementById('brand-toggle').addEventListener('click', toggleBrandOptions);
   document.getElementById('brand-toggle').addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleBrandOptions(); }
+  });
+
+  // ── Paste an image URL → load into the media slot via the proxy (dodges CORS) ──
+  async function addImageFromUrl() {
+    const input = document.getElementById('image-url');
+    const statusEl = document.getElementById('image-url-status');
+    const btn = document.getElementById('image-url-btn');
+    const url = input.value.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) {
+      statusEl.style.display = '';
+      statusEl.textContent = 'Paste a full image URL starting with http(s)://';
+      return;
+    }
+    btn.disabled = true;
+    statusEl.style.display = '';
+    statusEl.textContent = 'Loading image…';
+    try {
+      const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error((await res.json()).error || 'Could not load image');
+      const blob = await res.blob();
+      const ext = (blob.type.split('/')[1] || 'png').split('+')[0];
+      injectFileIntoInput('media', new File([blob], `pasted_media.${ext}`, { type: blob.type }));
+      statusEl.textContent = 'Added to media.';
+      input.value = '';
+    } catch (err) {
+      statusEl.textContent = 'Could not load that URL: ' + (err.message || err);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('image-url-btn').addEventListener('click', addImageFromUrl);
+  document.getElementById('image-url').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addImageFromUrl(); }
   });
 
   // ── Live preview: media overlay ──

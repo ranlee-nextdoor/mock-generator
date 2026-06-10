@@ -174,7 +174,8 @@ def fetch_brand_assets(query: str) -> dict:
     if not domain or "." not in domain:
         return {"error": f"Couldn't find a brand for '{query.strip()}'. Try the website (e.g. nike.com)."}
 
-    bf_logos, bf_images = _brandfetch_assets(domain)
+    # Brandfetch powers the logo only; creatives come from the page or a pasted URL.
+    bf_logos, _bf_images = _brandfetch_assets(domain)
     logos = list(bf_logos)
     social_imgs: list = []   # og:image / twitter:image — often just the brand card (= logo)
     content_imgs: list = []  # real inline <img> hero shots
@@ -225,10 +226,7 @@ def fetch_brand_assets(query: str) -> dict:
 
     logo_urls = _dedupe(logos, skip_noise=False)
     logo_set = set(logo_urls)
-    # Brandfetch brand images are the most reliable real creatives — rank first.
-    bf_content = [u for u in _dedupe(bf_images) if u not in logo_set]
-    scraped_content = [u for u in _dedupe(content_imgs) if u not in logo_set and u not in bf_content]
-    content = bf_content + scraped_content
+    content = [u for u in _dedupe(content_imgs) if u not in logo_set]
     social = [u for u in _dedupe(social_imgs) if u not in logo_set and u not in content]
 
     # Real content images first; the social card only as a last-resort option.
@@ -256,8 +254,12 @@ def proxy_image(url: str):
         return None, "Invalid URL"
     if not _is_public_host(parsed.hostname):
         return None, "Blocked host"
+    # Browser-like headers + a same-origin Referer defeat most hotlink protection
+    # that would otherwise 403 a bare server request (common on pasted image URLs).
+    headers = dict(BROWSER_HEADERS)
+    headers["Referer"] = f"{parsed.scheme}://{parsed.netloc}/"
     try:
-        r = requests.get(url, headers={"User-Agent": UA}, timeout=TIMEOUT, stream=True)
+        r = requests.get(url, headers=headers, timeout=TIMEOUT, stream=True)
         r.raise_for_status()
     except requests.RequestException as e:
         return None, f"Fetch failed: {e}"
