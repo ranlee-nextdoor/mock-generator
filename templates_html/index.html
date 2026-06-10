@@ -193,6 +193,21 @@
       color: #232f46;
       margin-top: 4px;
     }
+    .section-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 13px;
+      font-weight: 620;
+      color: #232f46;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .section-chevron { color: #576580; transition: transform 0.15s; }
+    .section-toggle[aria-expanded="true"] .section-chevron { transform: rotate(90deg); }
     .arrow-btn {
       flex-shrink: 0;
       width: 44px;
@@ -557,9 +572,14 @@
       </div>
     </div>
 
-    <!-- Upload zones -->
-    <div class="section-sublabel">Manual upload</div>
-    <div class="upload-row">
+    <!-- Upload zones (collapsible) -->
+    <button class="section-toggle" id="upload-toggle" type="button" aria-expanded="false">
+      <svg class="section-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Manual upload
+    </button>
+    <div class="upload-row" id="upload-row" style="display:none;">
       <div class="upload-zone" id="logo-zone">
         <input type="file" id="logo" name="logo" accept="image/*">
         <div class="upload-icon">
@@ -588,18 +608,6 @@
       </div>
     </div>
 
-    <!-- Paste image URL (e.g. an image found via Google Images) -->
-    <div class="field" id="paste-url-field" style="margin-top:12px;">
-      <label class="field-label" for="image-url">Or paste an image URL</label>
-      <div style="display:flex;gap:8px;">
-        <input type="text" id="image-url" placeholder="Right-click an image → Copy image address, then paste here"
-               style="flex:1;" autocomplete="off" spellcheck="false">
-        <button class="clear-btn" id="image-url-btn" type="button" style="white-space:nowrap;">Add to media</button>
-      </div>
-      <div class="upload-hint" style="margin-top:4px;">Tip: open the image to full size first, then copy its address — thumbnails come in low-res. You can also paste a copied image with ⌘V.</div>
-      <div id="image-url-status" style="font-size:12px;color:#576580;margin-top:4px;display:none;"></div>
-    </div>
-
     <!-- Advertiser name (doubles as brand search) -->
     <div class="field" id="prompt-area">
       <label class="field-label" for="advertiser">Advertiser name</label>
@@ -625,6 +633,18 @@
           <div id="brand-creatives" class="brand-grid"></div>
         </div>
       </div>
+    </div>
+
+    <!-- Image or Video (paste a URL or copied image) -->
+    <div class="field" id="paste-url-field">
+      <label class="field-label" for="image-url">Image or Video</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="image-url" placeholder="Right-click an image → Copy image address, then paste here"
+               style="flex:1;" autocomplete="off" spellcheck="false">
+        <button class="clear-btn" id="image-url-btn" type="button" style="white-space:nowrap;">Add to media</button>
+      </div>
+      <div class="upload-hint" style="margin-top:4px;">Tip: open the image to full size first, then copy its address — thumbnails come in low-res. You can also paste a copied image with ⌘V.</div>
+      <div id="image-url-status" style="font-size:12px;color:#576580;margin-top:4px;display:none;"></div>
     </div>
 
     <!-- Headline -->
@@ -940,6 +960,15 @@
     if (e.key === 'Enter') { e.preventDefault(); runPrompt(); }
   });
   document.getElementById('brand-fetch-btn').addEventListener('click', runPrompt);
+
+  // Collapsible manual upload section.
+  document.getElementById('upload-toggle').addEventListener('click', () => {
+    const btn = document.getElementById('upload-toggle');
+    const open = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    document.getElementById('upload-row').style.display = open ? 'none' : '';
+  });
+
   document.getElementById('brand-toggle').addEventListener('click', toggleBrandOptions);
   document.getElementById('brand-toggle').addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleBrandOptions(); }
