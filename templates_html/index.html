@@ -639,11 +639,11 @@
     <div class="field" id="paste-url-field">
       <label class="field-label" for="image-url">Image or Video</label>
       <div style="display:flex;gap:8px;">
-        <input type="text" id="image-url" placeholder="Right-click an image → Copy image address, then paste here"
+        <input type="text" id="image-url" placeholder="Paste an image URL or a YouTube link"
                style="flex:1;" autocomplete="off" spellcheck="false">
         <button class="clear-btn" id="image-url-btn" type="button" style="white-space:nowrap;">Add to media</button>
       </div>
-      <div class="upload-hint" style="margin-top:4px;">Tip: open the image to full size first, then copy its address — thumbnails come in low-res. You can also paste a copied image with ⌘V.</div>
+      <div class="upload-hint" style="margin-top:4px;">A YouTube link adds the video’s thumbnail. For images, open to full size first then copy the address — or paste a copied image with ⌘V.</div>
       <div id="image-url-status" style="font-size:12px;color:#576580;margin-top:4px;display:none;"></div>
     </div>
 
@@ -974,7 +974,24 @@
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleBrandOptions(); }
   });
 
-  // ── Paste an image URL → load into the media slot via the proxy (dodges CORS) ──
+  // Pull a YouTube video id from common URL shapes (watch, youtu.be, shorts, embed).
+  function youtubeId(url) {
+    const m = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    return m ? m[1] : null;
+  }
+
+  // Proxy-fetch an image URL and drop it into the media slot. Returns true on success.
+  async function loadIntoMedia(url) {
+    const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
+    if (!res.ok) return false;
+    const blob = await res.blob();
+    if (!blob.type.startsWith('image/')) return false;
+    const ext = (blob.type.split('/')[1] || 'jpg').split('+')[0];
+    injectFileIntoInput('media', new File([blob], `media.${ext}`, { type: blob.type }));
+    return true;
+  }
+
+  // ── Image / YouTube field → load a creative into the media slot via the proxy ──
   async function addImageFromUrl() {
     const input = document.getElementById('image-url');
     const statusEl = document.getElementById('image-url-status');
@@ -983,20 +1000,29 @@
     if (!url) return;
     if (!/^https?:\/\//i.test(url)) {
       statusEl.style.display = '';
-      statusEl.textContent = 'Paste a full image URL starting with http(s)://';
+      statusEl.textContent = 'Paste a full image or YouTube URL starting with http(s)://';
       return;
     }
     btn.disabled = true;
     statusEl.style.display = '';
-    statusEl.textContent = 'Loading image…';
     try {
-      const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
-      if (!res.ok) throw new Error((await res.json()).error || 'Could not load image');
-      const blob = await res.blob();
-      const ext = (blob.type.split('/')[1] || 'png').split('+')[0];
-      injectFileIntoInput('media', new File([blob], `pasted_media.${ext}`, { type: blob.type }));
-      statusEl.textContent = 'Added to media.';
-      input.value = '';
+      const ytId = youtubeId(url);
+      if (ytId) {
+        statusEl.textContent = 'Pulling YouTube thumbnail…';
+        // maxres isn't always generated; fall back to lower-res that always exists.
+        const sizes = ['maxresdefault', 'sddefault', 'hqdefault'];
+        let ok = false;
+        for (const s of sizes) {
+          if (await loadIntoMedia(`https://i.ytimg.com/vi/${ytId}/${s}.jpg`)) { ok = true; break; }
+        }
+        statusEl.textContent = ok ? 'Added the video’s thumbnail to media.' : 'Couldn’t load that video’s thumbnail.';
+        if (ok) input.value = '';
+      } else {
+        statusEl.textContent = 'Loading image…';
+        const ok = await loadIntoMedia(url);
+        statusEl.textContent = ok ? 'Added to media.' : 'Couldn’t load that URL — try a different image.';
+        if (ok) input.value = '';
+      }
     } catch (err) {
       statusEl.textContent = 'Could not load that URL: ' + (err.message || err);
     } finally {
