@@ -1016,12 +1016,10 @@
           if (await loadIntoMedia(`https://i.ytimg.com/vi/${ytId}/${s}.jpg`)) { ok = true; break; }
         }
         statusEl.textContent = ok ? 'Added the video’s thumbnail to media.' : 'Couldn’t load that video’s thumbnail.';
-        if (ok) input.value = '';
       } else {
         statusEl.textContent = 'Loading image…';
         const ok = await loadIntoMedia(url);
         statusEl.textContent = ok ? 'Added to media.' : 'Couldn’t load that URL — try a different image.';
-        if (ok) input.value = '';
       }
     } catch (err) {
       statusEl.textContent = 'Could not load that URL: ' + (err.message || err);
