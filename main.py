@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Mock generator: composites a video clip as a GIF into a device mockup template."""
 
+from __future__ import annotations
+
 import argparse
 import json
 import os

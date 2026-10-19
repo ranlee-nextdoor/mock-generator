@@ -1,5 +1,7 @@
 """Figma API integration — fetches and exports component variants."""
 
+from __future__ import annotations
+
 import os
 import requests
 
