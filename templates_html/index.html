@@ -364,6 +364,29 @@
       transition: background 0.15s;
     }
     .clear-btn:hover { background: #e2e5ea; }
+    .format-toggle {
+      display: inline-flex;
+      background: #f0f2f5;
+      border-radius: 1000px;
+      padding: 3px;
+    }
+    .fmt-btn {
+      height: 34px;
+      padding: 0 14px;
+      border: none;
+      background: none;
+      border-radius: 1000px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      color: #576580;
+      cursor: pointer;
+    }
+    .fmt-btn.active {
+      background: #fff;
+      color: #232f46;
+      box-shadow: 0 1px 2px rgba(35,47,70,0.12);
+    }
 
     /* ── Right column ── */
     .right-col {
@@ -568,6 +591,10 @@
       <div class="left-col-title">Assets</div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="clear-btn" id="clear-btn" type="button">Clear all</button>
+        <div class="format-toggle" id="format-toggle" role="group" aria-label="Download format">
+          <button class="fmt-btn active" type="button" data-fmt="png">PNG</button>
+          <button class="fmt-btn" type="button" data-fmt="gif">GIF</button>
+        </div>
         <button class="generate-btn" id="submit-btn" type="button">Download</button>
       </div>
     </div>
@@ -1109,6 +1136,10 @@
     }
     mediaObjectURL = URL.createObjectURL(file);
     const isVid = file.type.startsWith('video/');
+    // Sensible default: a video defaults to GIF, an image to PNG (still overridable).
+    const defFmt = isVid ? 'gif' : 'png';
+    document.querySelectorAll('#format-toggle .fmt-btn').forEach(x =>
+      x.classList.toggle('active', x.dataset.fmt === defFmt));
     const imgEl = document.getElementById('preview-media-img');
     const vidEl = document.getElementById('preview-media-video');
     if (isVid) {
@@ -1428,6 +1459,20 @@
     });
   }
 
+  // A still source for a media file: the image, or a video's first frame.
+  // drawCropped handles both (it reads videoWidth/naturalWidth).
+  async function loadStillSource(file) {
+    if (file.type.startsWith('video/')) {
+      const v = document.createElement('video');
+      v.src = URL.createObjectURL(file);
+      v.muted = true; v.playsInline = true;
+      await new Promise(r => { v.onloadeddata = r; v.load(); });
+      await seekVideo(v, 0);
+      return v;
+    }
+    return loadImage(URL.createObjectURL(file));
+  }
+
   function drawCropped(ctx, source, dx, dy, dw, dh) {
     const sw = source.videoWidth || source.naturalWidth || source.width;
     const sh = source.videoHeight || source.naturalHeight || source.height;
@@ -1505,7 +1550,7 @@
 
     const frameImg = await loadImage('/api/frame-image?device=' + encodeURIComponent(getDevice()) + '&format=' + encodeURIComponent(getFormatKey()));
     const logoImg = logoFile ? await loadImage(URL.createObjectURL(logoFile)) : null;
-    const mediaImg = await loadImage(URL.createObjectURL(mediaFile));
+    const mediaImg = await loadStillSource(mediaFile); // image, or video first frame
 
     const canvas = document.createElement('canvas');
     canvas.width = outputWidth;
@@ -1579,15 +1624,20 @@
     const frameImg = await loadImage('/api/frame-image?device=' + encodeURIComponent(getDevice()) + '&format=' + encodeURIComponent(getFormatKey()));
     const logoImg = logoFile ? await loadImage(URL.createObjectURL(logoFile)) : null;
 
-    const video = document.createElement('video');
-    video.src = URL.createObjectURL(mediaFile);
-    video.muted = true;
-    video.playsInline = true;
-    await new Promise(r => { video.onloadedmetadata = r; video.load(); });
-
-    const duration = Math.min(video.duration, maxDuration);
-    const totalFrames = Math.floor(duration * fps);
+    // Video → animated GIF across frames; image → a single static frame.
+    const isVideo = mediaFile.type.startsWith('video/');
+    let video = null, stillImg = null, totalFrames = 1;
     const interval = 1 / fps;
+    if (isVideo) {
+      video = document.createElement('video');
+      video.src = URL.createObjectURL(mediaFile);
+      video.muted = true;
+      video.playsInline = true;
+      await new Promise(r => { video.onloadedmetadata = r; video.load(); });
+      totalFrames = Math.floor(Math.min(video.duration, maxDuration) * fps);
+    } else {
+      stillImg = await loadImage(URL.createObjectURL(mediaFile));
+    }
 
     const comp = variantConfig.component;
     const scale = outputWidth / comp.width;
@@ -1631,14 +1681,17 @@
     });
 
     for (let i = 0; i < totalFrames; i++) {
-      statusMsg.textContent = `Capturing frames… ${i + 1}/${totalFrames}`;
-      const t = i * interval;
-      await seekVideo(video, t);
+      let mediaSrc = stillImg;
+      if (isVideo) {
+        statusMsg.textContent = `Capturing frames… ${i + 1}/${totalFrames}`;
+        await seekVideo(video, i * interval);
+        mediaSrc = video;
+      }
 
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, outputWidth, outputHeight);
 
-      if (smr) drawCropped(ctx, video, smr.x, smr.y, smr.w, smr.h);
+      if (smr) drawCropped(ctx, mediaSrc, smr.x, smr.y, smr.w, smr.h);
 
       // Draw text layers (above media, below chrome); CTA shifted with reflow
       drawTextLayers(ctx, scale, comp.width, shift);
@@ -1693,6 +1746,17 @@
 
 
   // ── Generate button ──
+  // ── PNG / GIF download-format toggle ──
+  function getDownloadFormat() {
+    return document.querySelector('#format-toggle .fmt-btn.active')?.dataset.fmt || 'png';
+  }
+  document.querySelectorAll('#format-toggle .fmt-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#format-toggle .fmt-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+    });
+  });
+
   document.getElementById('submit-btn').addEventListener('click', async () => {
     const btn = document.getElementById('submit-btn');
     const statusMsg = document.getElementById('status-msg');
@@ -1709,32 +1773,21 @@
     errorBanner.style.display = 'none';
 
     try {
-      if (mediaFile.type.startsWith('video/')) {
+      const logoFile = document.getElementById('logo').files[0] || null;
+      const fmt = getDownloadFormat();
+      let url;
+      if (fmt === 'gif') {
         statusMsg.textContent = 'Capturing frames… this may take a moment.';
-        const gifUrl = await generateGifClientSide(
-          mediaFile,
-          document.getElementById('logo').files[0] || null,
-          currentFrameData
-        );
-        const a = document.createElement('a');
-        a.href = gifUrl;
-        a.download = generateFilename('gif');
-        a.click();
-        statusMsg.textContent = '';
+        url = await generateGifClientSide(mediaFile, logoFile, currentFrameData);
       } else {
-        // Image: generate client-side for exact preview match
         statusMsg.textContent = 'Generating…';
-        const pngUrl = await generateImageClientSide(
-          mediaFile,
-          document.getElementById('logo').files[0] || null,
-          currentFrameData
-        );
-        const a = document.createElement('a');
-        a.href = pngUrl;
-        a.download = generateFilename('png');
-        a.click();
-        statusMsg.textContent = '';
+        url = await generateImageClientSide(mediaFile, logoFile, currentFrameData);
       }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = generateFilename(fmt);
+      a.click();
+      statusMsg.textContent = '';
     } catch (err) {
       showError('Something went wrong: ' + (err.message || err));
       statusMsg.textContent = '';
