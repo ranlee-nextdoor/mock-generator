@@ -1373,7 +1373,7 @@
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
-      img.onerror = reject;
+      img.onerror = () => reject(new Error('Could not load image: ' + String(src).slice(0, 80)));
       img.src = src;
     });
   }

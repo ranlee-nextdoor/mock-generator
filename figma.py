@@ -197,20 +197,27 @@ def get_component_export_url(node_id: str, scale: float = 2.0) -> str | None:
 
 
 def export_component_png(node_id: str, scale: float = 2.0) -> bytes | None:
-    """Export a Figma node as PNG and return raw bytes."""
+    """Export a Figma node as PNG and return raw bytes.
+
+    Returns None on any failure (missing/expired token, rate limit, network)
+    so callers fall back to the bundled cached frames instead of 500-ing.
+    """
     if not FIGMA_TOKEN:
         return None
-    url = f"{BASE_URL}/images/{FIGMA_FILE_KEY}"
-    params = {"ids": node_id, "format": "png", "scale": scale}
-    resp = requests.get(url, headers=HEADERS, params=params, timeout=30)
-    resp.raise_for_status()
-    images = resp.json().get("images", {})
-    img_url = images.get(node_id) or images.get(node_id.replace(":", "-"))
-    if not img_url:
+    try:
+        url = f"{BASE_URL}/images/{FIGMA_FILE_KEY}"
+        params = {"ids": node_id, "format": "png", "scale": scale}
+        resp = requests.get(url, headers=HEADERS, params=params, timeout=30)
+        resp.raise_for_status()
+        images = resp.json().get("images", {})
+        img_url = images.get(node_id) or images.get(node_id.replace(":", "-"))
+        if not img_url:
+            return None
+        resp2 = requests.get(img_url, timeout=60)
+        resp2.raise_for_status()
+        return resp2.content
+    except (requests.RequestException, ValueError):
         return None
-    resp2 = requests.get(img_url, timeout=60)
-    resp2.raise_for_status()
-    return resp2.content
 
 
 def get_available_devices() -> dict:
