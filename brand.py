@@ -174,8 +174,8 @@ def fetch_brand_assets(query: str) -> dict:
     if not domain or "." not in domain:
         return {"error": f"Couldn't find a brand for '{query.strip()}'. Try the website (e.g. nike.com)."}
 
-    # Brandfetch powers the logo only; creatives come from the page or a pasted URL.
-    bf_logos, _bf_images = _brandfetch_assets(domain)
+    # Brandfetch powers the logo AND (when available) marketing imagery.
+    bf_logos, bf_images = _brandfetch_assets(domain)
     logos = list(bf_logos)
     social_imgs: list = []   # og:image / twitter:image — often just the brand card (= logo)
     content_imgs: list = []  # real inline <img> hero shots
@@ -226,21 +226,23 @@ def fetch_brand_assets(query: str) -> dict:
 
     logo_urls = _dedupe(logos, skip_noise=False)
     logo_set = set(logo_urls)
-    content = [u for u in _dedupe(content_imgs) if u not in logo_set]
-    social = [u for u in _dedupe(social_imgs) if u not in logo_set and u not in content]
+    # Brandfetch marketing images are the best creatives — rank them first.
+    bf_content = [u for u in _dedupe(bf_images) if u not in logo_set]
+    content = [u for u in _dedupe(content_imgs) if u not in logo_set and u not in bf_content]
+    social = [u for u in _dedupe(social_imgs) if u not in logo_set and u not in content and u not in bf_content]
 
-    # Real content images first; the social card only as a last-resort option.
-    creatives = (content + social)[:MAX_CREATIVES]
+    # Brandfetch imagery first, then homepage heroes, then the social card.
+    creatives = (bf_content + content + social)[:MAX_CREATIVES]
 
     return {
         "domain": domain,
         "name": name or domain,
         "logos": logo_urls,
         "creatives": creatives,
-        # True only when we found a genuine content image (Brandfetch brand image
-        # or inline hero) — safe to auto-fill media. When false, the only
-        # "creative" is the brand card, so we don't auto-fill the logo's twin.
-        "has_content_creative": bool(content),
+        # Count of Brandfetch marketing images (diagnostic).
+        "brand_image_count": len(bf_content),
+        # True when we have a real content image to auto-fill (Brandfetch or hero).
+        "has_content_creative": bool(bf_content or content),
     }
 
 
