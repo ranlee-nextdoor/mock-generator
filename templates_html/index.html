@@ -877,6 +877,20 @@
     });
   }
 
+  // Creatives below this on their shorter side are placeholders/icons (e.g. a
+  // 24px tracking pixel) that blur when scaled into the creative slot.
+  const MIN_CREATIVE_SIDE = 200;
+
+  function blobMinSide(blob) {
+    return new Promise(res => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => { const m = Math.min(img.naturalWidth, img.naturalHeight); URL.revokeObjectURL(url); res(m); };
+      img.onerror = () => { URL.revokeObjectURL(url); res(0); };
+      img.src = url;
+    });
+  }
+
   async function useBrandImage(thumbEl, url, inputId, silent = false) {
     const group = thumbEl.parentElement;
     group.querySelectorAll('.brand-thumb.selected').forEach(t => t.classList.remove('selected'));
@@ -887,6 +901,11 @@
       const blob = await res.blob();
       // A logo that's invisible on white (white/transparent mark) is useless here.
       if (inputId === 'logo' && !(await blobVisibleOnWhite(blob))) {
+        thumbEl.classList.remove('selected');
+        return false;
+      }
+      // A tiny image as the creative just blurs when scaled up.
+      if (inputId === 'media' && (await blobMinSide(blob)) < MIN_CREATIVE_SIDE) {
         thumbEl.classList.remove('selected');
         return false;
       }
@@ -918,7 +937,10 @@
       // Drop thumbnails that fail to load (dead links, blocked hosts), and
       // drop logos that are invisible on white (white/transparent marks).
       img.onerror = () => btn.remove();
-      img.onload = () => { if (targetInput === 'logo' && !imgVisibleOnWhite(img)) btn.remove(); };
+      img.onload = () => {
+        if (targetInput === 'logo' && !imgVisibleOnWhite(img)) btn.remove();
+        else if (targetInput === 'media' && Math.min(img.naturalWidth, img.naturalHeight) < MIN_CREATIVE_SIDE) btn.remove();
+      };
       btn.appendChild(img);
       btn.addEventListener('click', () => useBrandImage(btn, url, targetInput));
       container.appendChild(btn);
