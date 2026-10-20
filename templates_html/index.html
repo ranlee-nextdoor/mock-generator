@@ -628,10 +628,6 @@
           <div class="prompt-result-label">Logos — click to swap</div>
           <div id="brand-logos" class="brand-grid"></div>
         </div>
-        <div id="brand-creatives-group" style="display:none;">
-          <div class="prompt-result-label">Creatives — click to swap</div>
-          <div id="brand-creatives" class="brand-grid"></div>
-        </div>
       </div>
     </div>
 
@@ -973,35 +969,24 @@
       const res = await fetch(`/api/brand?q=${encodeURIComponent(query)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Lookup failed');
+      // Brandfetch supplies the logo only. Media is added via the Image/Video
+      // field or manual upload.
       const logoEntries = renderBrandThumbs('brand-logos', 'brand-logos-group', data.logos, 'logo');
-      const creativeEntries = renderBrandThumbs('brand-creatives', 'brand-creatives-group', data.creatives, 'media');
-
-      // Auto-fill the logo (reliable). Only auto-fill media when we found a real
-      // content image — otherwise the only "creative" is the brand card (= logo),
-      // so we leave media for the rep to pick or upload.
       const gotLogo = await autoFillFirst(logoEntries, 'logo');
-      const gotCreative = data.has_content_creative
-        ? await autoFillFirst(creativeEntries, 'media')
-        : false;
 
-      const total = logoEntries.length + creativeEntries.length;
-      const extras = total - (gotLogo ? 1 : 0) - (gotCreative ? 1 : 0);
+      const extras = logoEntries.length - (gotLogo ? 1 : 0);
       if (extras > 0) {
-        // Keep the rest collapsed behind an expandable link.
+        // Keep the other logos collapsed behind an expandable link.
         resultsEl.style.display = 'none';
-        toggle.dataset.showText = `Show ${extras} other option${extras > 1 ? 's' : ''}`;
+        toggle.dataset.showText = `Show ${extras} other logo${extras > 1 ? 's' : ''}`;
         toggle.textContent = toggle.dataset.showText;
         toggle.style.display = '';
       }
 
       const label = data.name || data.domain;
-      if (gotLogo && gotCreative) {
-        statusEl.textContent = `Filled logo + media from ${label} (${data.domain}).`;
-      } else if (gotLogo) {
-        statusEl.textContent = `Filled the logo from ${label}. No clean creative found — pick one below or upload your own.`;
-      } else {
-        statusEl.textContent = `Found ${label}, but no usable assets. Upload manually below.`;
-      }
+      statusEl.textContent = gotLogo
+        ? `Filled the logo from ${label} (${data.domain}). Add an image or video below.`
+        : `Found ${label}, but no usable logo. Upload one below.`;
     } catch (err) {
       statusEl.textContent = 'Could not fetch: ' + (err.message || err);
     } finally {

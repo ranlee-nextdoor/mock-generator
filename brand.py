@@ -174,20 +174,18 @@ def fetch_brand_assets(query: str) -> dict:
     if not domain or "." not in domain:
         return {"error": f"Couldn't find a brand for '{query.strip()}'. Try the website (e.g. nike.com)."}
 
-    # Brandfetch powers the logo AND (when available) marketing imagery.
-    bf_logos, bf_images = _brandfetch_assets(domain)
+    # Brandfetch supplies the logo. (Creatives are no longer auto-pulled —
+    # the user adds media via the Image/Video field or manual upload.)
+    bf_logos, _bf_images = _brandfetch_assets(domain)
     logos = list(bf_logos)
-    social_imgs: list = []   # og:image / twitter:image — often just the brand card (= logo)
-    content_imgs: list = []  # real inline <img> hero shots
 
-    # One homepage fetch feeds both logo and creative discovery.
+    # Homepage apple-touch-icons / favicons as a logo fallback when Brandfetch
+    # has no entry for the brand.
     try:
         r = requests.get(f"https://{domain}", headers=BROWSER_HEADERS, timeout=TIMEOUT)
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
         base = str(r.url)
-
-        # Square brand marks — apple-touch-icon is almost always a clean logo.
         for sel, attr in [
             ('link[rel="apple-touch-icon"]', "href"),
             ('link[rel="apple-touch-icon-precomposed"]', "href"),
@@ -198,51 +196,16 @@ def fetch_brand_assets(query: str) -> dict:
             for tag in soup.select(sel):
                 if tag.get(attr):
                     logos.append(urljoin(base, tag[attr]))
-
-        # Social-preview images — kept as fallback only (frequently the logo on a card).
-        for sel, attr in [
-            ('meta[property="og:image"]', "content"),
-            ('meta[property="og:image:secure_url"]', "content"),
-            ('meta[name="twitter:image"]', "content"),
-            ('link[rel="image_src"]', "href"),
-        ]:
-            for tag in soup.select(sel):
-                if tag.get(attr):
-                    social_imgs.append(urljoin(base, tag[attr]))
-
-        # Prominent inline images — the real creatives.
-        for img in soup.find_all("img"):
-            src = img.get("src") or img.get("data-src")
-            if not src:
-                srcset = img.get("data-srcset") or img.get("srcset") or ""
-                src = srcset.split()[0] if srcset.split() else None
-            if src:
-                content_imgs.append(urljoin(base, src))
     except requests.RequestException:
         pass
 
     # Guaranteed keyless logo backstop.
     logos.append(f"https://www.google.com/s2/favicons?domain={domain}&sz=256")
 
-    logo_urls = _dedupe(logos, skip_noise=False)
-    logo_set = set(logo_urls)
-    # Brandfetch marketing images are the best creatives — rank them first.
-    bf_content = [u for u in _dedupe(bf_images) if u not in logo_set]
-    content = [u for u in _dedupe(content_imgs) if u not in logo_set and u not in bf_content]
-    social = [u for u in _dedupe(social_imgs) if u not in logo_set and u not in content and u not in bf_content]
-
-    # Brandfetch imagery first, then homepage heroes, then the social card.
-    creatives = (bf_content + content + social)[:MAX_CREATIVES]
-
     return {
         "domain": domain,
         "name": name or domain,
-        "logos": logo_urls,
-        "creatives": creatives,
-        # Count of Brandfetch marketing images (diagnostic).
-        "brand_image_count": len(bf_content),
-        # True when we have a real content image to auto-fill (Brandfetch or hero).
-        "has_content_creative": bool(bf_content or content),
+        "logos": _dedupe(logos, skip_noise=False),
     }
 
 
