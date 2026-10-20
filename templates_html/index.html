@@ -666,7 +666,7 @@
                style="flex:1;" autocomplete="off" spellcheck="false">
         <button class="clear-btn" id="image-url-btn" type="button" style="white-space:nowrap;">Apply</button>
       </div>
-      <div class="upload-hint" style="margin-top:4px;">A YouTube link adds the video’s thumbnail. For images, open to full size first then copy the address — or paste a copied image with ⌘V.</div>
+      <div class="upload-hint" style="margin-top:4px;">A YouTube link adds the video’s thumbnail. For a moving ad, screen-record the clip (⌘⇧5) and upload it below — it exports as a GIF (looped up to 10s). For images, open to full size first then copy the address — or paste a copied image with ⌘V.</div>
       <div id="image-url-status" style="font-size:12px;color:#576580;margin-top:4px;display:none;"></div>
     </div>
 
@@ -1610,7 +1610,7 @@
 
   async function generateGifClientSide(mediaFile, logoFile, variantConfig) {
     const fps = 10;
-    const maxDuration = 4;
+    const maxDuration = 10;  // cap the GIF loop at 10 seconds
     const outputWidth = 400;
 
     const statusMsg = document.getElementById('status-msg');
